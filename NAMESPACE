@@ -1,0 +1,17 @@
+import(methods)
+import(MASS, gplots, hypergea)
+export("runConCub", "filterConCub", "plotConCub", "GO2list", "KEGG2list")
+exportClasses("concub", "concubfilter")
+exportMethods("show", "initialize", "getTable")
+export(p.value, "p.value<-"
+, minimum.l2or, "minimum.l2or<-"
+, test.direction, "test.direction<-"
+
+, skip.zeroobs, "skip.zeroobs<-"
+, skip.min.obs, "skip.min.obs<-"
+, skip.min.group, "skip.min.group<-"
+
+, drop.insignif.layer, "drop.insignif.layer<-"
+, drop.wrongdir.layer, "drop.wrongdir.layer<-"
+, drop.lowl2or.layer, "drop.lowl2or.layer<-"
+)

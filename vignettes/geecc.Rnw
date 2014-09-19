@@ -1,0 +1,354 @@
+\documentclass[a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pdflscape}
+\usepackage{graphicx}
+\usepackage{Sweave}
+\usepackage{multicol}
+\usepackage{hyperref}
+
+\newcommand{\etal}{\textit{et al.}}
+
+\newcommand{\Rpackage}[1]{\textsf{#1}-package}
+\newcommand{\Rpack}[1]{\textsf{#1}}
+\newcommand{\Rfunction}[1]{\texttt{#1}-function}
+\newcommand{\Rfun}[1]{\texttt{#1}}
+\newcommand{\Rcode}[1]{\texttt{#1}}
+\newcommand{\Rparameter}[1]{'\texttt{#1}'}
+\newcommand{\Rparametersetting}[1]{"\texttt{#1}"}
+\newcommand{\cat}[1]{\textbf{#1}}
+\newcommand{\var}[1]{\textit{#1}}
+
+%\VignetteIndexEntry{geecc User's Guide}
+
+\SweaveOpts{prefix.string=GEECC}
+
+
+\title{\Rpack{geecc} - searching for associations between gene sets}
+\author{Markus Boenn}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+A standard application of gene expression data is to search for genes which are differentially expressed between two (or more) conditions. For this, depending on the nature of the data, tests for continous values (microarrays, $t$-test and derivatives, \Rpackage{limma}) or tests discrete counts (RNA-Seq, \Rpack{edgeR}- \cite{robinson2010edger} or \Rpackage{DESeq} \cite{anders2010differential}, just to name two) can be applied. Having found a list of differentially expressed genes (DEG), the next step is to get an impression about the functions of these DEG. I.e. scientists want to know what these genes are doing and why are they differentially expressed in their experiment.
+
+For this, searching for enriched gene sets has become standard analysis: The data is implicitly reorganised in $2\times2$ contingency tables and a hypergeometric or chi-squared test is applied to get a $P$-value. If the $P$-value is sufficiently small, the assumption of independence is rejected and some association between the gene sets assumed. The most popular database providing gene sets is the Gene Ontology (GO) \url{geneontology.org}. Other popular gene set systems are PFam, KEGG or \{C|K\}OG.
+
+Most tools focus on a simple enrichment analysis checking whether there is a dependency between a given DEG list and a list of gene sets, for instance GOstats \cite{falcon2007using}. However, Simpson's Paradoxon tells us that unresolved details in the gene sets might put a bias to the results and its interpretation. To tackle this problem, the \Rpackage{geecc} allows for enrichment analysis between three categories. A potential third category of interest might be the sequence length, chromosomal position, GC content or phylostrata.
+
+Basically, \Rpack{geecc} permits the application of tests for the hierarchy of log-linear models (e.g. \cite{agresti1992survey}). This includes tests where the assumption of
+\begin{itemize}
+\item mutual independence
+\item single pairwise (joint) independence
+\item two pairwise (conditional) independence
+\item homogenous association, no three-way interaction
+\end{itemize}
+defines the null-model (null-hypothesis). Note that the alternative model is the saturated model. Using these tests, questions like 'Are these variables mutually independent from each other?' or 'Is there evidence for three-way interaction?' can be answered. Depending on the specific question of interest, testing for different directions of enrichment, i.e. over-representation, under-representation or both, is possible. For this, the \Rpackage{geecc} calls routines from the \Rpackage{hypergea} (\Rfun{hypergeom.test()}) and \Rpackage{MASS} (\Rfun{loglm()}). The routines from \Rpackage{hypergea} are calculating $P$-values from a hypergeometric distribution, whereby this calculation is done with parallelized C code. The routines can be used if highly accurate $P$-values are required and approximation by chi-squared tests may not be reliable. The \Rfunction{loglm()} provides approximate chi-squared tests via convenient access by formulas for linear models. Tables \ref{tab:tests2x2} and \ref{tab:tests2x2x2} give an overview for different null-models, possible test-directions and test-types.
+
+\begin{table}[h]
+\caption{\textbf{Tests for $2\times2$ questions.}}
+\center
+\begin{tabular}{|c|c|c|}
+\hline
+null-model	&direction	&test \\
+\hline\hline
+mutual independence  &one-sided	&hypergeometric \\
+mutual independence  &two-sided	&hypergeometric, $\chi^2$ \\
+\hline
+\end{tabular}
+\label{tab:tests2x2}
+\end{table}
+
+\begin{table}[h]
+\caption{\textbf{Tests for $2\times2\times2$ questions.}}
+\center
+\begin{tabular}{|c|c|c|}
+\hline
+null-model	&direction	&test \\
+\hline\hline
+mutual independence  &one-sided	&hypergeometric \\
+mutual independence  &two-sided	&hypergeometric, $\chi^2$ \\
+\hline
+joint independence  &one-sided	&hypergeometric \\
+joint independence  &two-sided	&hypergeometric, $\chi^2$ \\
+\hline
+conditional independence  &two-sided	&$\chi^2$ \\
+\hline
+homogenous association  &two-sided	&$\chi^2$ \\
+\hline
+\end{tabular}
+\label{tab:tests2x2x2}
+\end{table}
+
+
+
+\section{General workflow - a worked example}
+The workflow can be divided into four distinct steps. In a first step the user have to prepare the data, i.e. a decision has to be made what are the differentially expressed genes (proper threshoulds for $P$-values and fold-changes), which GO terms should be considered, and, in case that a third category should be taken into account, assign the gene ids to proper categories. The outcome of this step should be a named list, where each item is again a named list. This inner list contains the variables and the items assigned to them.
+
+In this worked example we introduce the different steps that have to be done during a \Rpack{geecc} analysis. We use gene expression data from Marioni \etal{} \cite{marioni2008rna} (downloaded from \url{http://giladlab.uchicago.edu/data.html}), who compared differences in gene expression in liver and kidney.
+
+To speed up the examples in the vignette we consider only the first $15000$ probe sets.
+
+\subsection{Step 1: Data preparation}
+<<prepare_deg, eval=TRUE, echo=TRUE>>=
+library(geecc)
+#load marioni data set
+data(marioni)
+marioni <- marioni[1:15000, ]
+# adjust for multiple testing and get probe sets which are 
+# at least two-fold regulated and fdr smaller than 5 %
+fdr <- p.adjust(marioni[, "Pvalue"], "fdr")
+deg.diff <- rownames(marioni)[ which(fdr < 0.05) ]
+deg.up <- rownames(marioni)[ which(fdr < 0.05 & marioni[, "logFC"] > 0) ]
+deg.down <- rownames(marioni)[ which(fdr < 0.05 & marioni[, "logFC"] < 0) ]
+sapply(list(deg.diff, deg.up, deg.down), length)
+@
+
+%There are $4637$ genes expressed at a higher level in liver than in kidney and $3650$ genes are expressed at a higher level. 
+Next, prepare the gene sets.
+
+<<workflow_step1, eval=TRUE, echo=TRUE>>=
+library(GO.db)
+library(hgu133plus2.db)
+
+## divide sequence lengths into 33 percent quantiles
+seqlen <- setNames(marioni[, "End"] - marioni[, "Start"] + 1, rownames(marioni))
+step <- 33; QNTL <- seq(0, 100, step)
+qntl <- cbind(quantile(seqlen, prob=QNTL/100), QNTL)
+cc <- cut(seqlen, breaks=qntl[,1], labels=qntl[-length(QNTL),2], include.lowest=TRUE)
+seqlen.qntl <- cbind(seqlen, cc )
+
+#check if there are three groups of same size
+table(seqlen.qntl[,2])
+
+## prepare a list of levels for each category
+## restrict to GO category 'cellular component' (CC)
+category1 <- list( diff=deg.diff, up=deg.up, down=deg.down )
+category2 <- GO2list(db=hgu133plus2GO2PROBE, go.cat="CC")
+category3 <- split(rownames(seqlen.qntl), factor(seqlen.qntl[,2]))
+names(category3) <- as.character(c(QNTL[1:(length(QNTL)-1)]))
+
+## check content of each category list
+lapply(category1[1:3], head)
+lapply(category2[1:3], head)
+lapply(category3[1:3], head)
+CatList <- list(deg=category1, go=category2, len=category3)
+@
+
+\subsection{Step 2: Initialize objects}
+
+In a second step, the \Rcode{concubfilter}-object (storing the filters that should be applied during analysis) and the \Rcode{concub}-object (storing categories, their variables and other options for the categories) have to be initialized.
+
+In this worked example we perform a simple GO enrichment analysis for differentially expressed genes. We don't want to consider only over-represented GO terms, but also under-represented ones, so we apply a \Rcode{"two.sided"} test.
+<<workflow_step2, eval=TRUE, echo=TRUE>>=
+## run a simple two-way analysis on 'deg' and 'go'
+## create a ConCubFilter-object
+CCF.obj <- new("concubfilter", names=names(CatList)[1:2], p.value=0.5, 
+  test.direction="two.sided", skip.min.obs=2)
+## create a ConCub-object
+CC.obj <- new("concub", fact=CatList[1:2], population=rownames(marioni), 
+  approx=5, null.model=~deg+go)
+@
+
+\subsection{Step 3: Run tests and filter results}
+In the third step we run the test and apply some additional filtering on the outcome.
+
+In this example we consider only the first $400$ GO terms.
+<<workflow_step3, eval=TRUE, echo=FALSE, results=hide>>=
+gorange <- names(category2)[1:400]
+CC.obj2 <- runConCub( obj=CC.obj, filter=CCF.obj, nthreads=2, rng=list(go=gorange) )
+@
+<<workflow_step3a, eval=TRUE, echo=TRUE>>=
+## check current filter settings and change some filters
+CCF.obj
+drop.insignif.layer(CCF.obj) <- setNames(c(FALSE, TRUE), names(CatList)[1:2])
+p.value(CCF.obj) <- 0.01
+CCF.obj
+CC.obj3 <- filterConCub(obj=CC.obj2, filter=CCF.obj, p.adjust.method="BH")
+@
+Additional filters can be applied, which drop useless test results, for instance those with insignificant $P$-values (according to the setting of \Rcode{p.value} in the \Rcode{concubfilter}-object). In addition, we are able to adjust the $P$-values for multiple testing at this stage. This is done within the \Rfunction{filterConCub} by calling the R-routine \Rfun{p.adjust} with the \Rparameter{method} set by the user (Benjamini-Hochberg adjustment \cite{benjamini1995controlling} in this example).
+
+\subsection{Step 4: Visualization and storing final table}
+In the last step, the test results are visualized and can be stored in a \Rcode{data.frame} for further work. Results are visualized in a simple heatmap. This fosters interpretation of possible associations in the data. The \Rfunction{heatmap.2} from \Rpackage{gplots} is used. Arguments of this function (see man page of \Rfun{heatmap.2}), especially size of labels and clustering options, can be adapted to the users needs by passing the settings via the \Rparameter{args\_heatmap.2}-parameter (a list).
+
+<<workflow_step4, eval=TRUE, echo=TRUE, fig=TRUE, include=FALSE>>=
+## interpretation of raw GO ids is difficult, use term description
+translation <- list(go=setNames(sapply(names(category2), Term), names(category2)))
+## pdf("output.2w.pdf")
+plotConCub( obj=CC.obj3, filter=CCF.obj, col=list(range=c(-5,5)) 
+  , alt.names=translation, t=TRUE, dontshow=list(deg=c("diff"))
+  , args_heatmap.2=list(Rowv=TRUE, dendrogram="row", margins=c(3,12))
+)
+## dev.off()
+res2w <- getTable(obj=CC.obj3, na.rm=TRUE)
+@
+
+\begin{landscape}
+\begin{figure}[hp]
+\center
+\includegraphics[width=1.2\textwidth, height=1.2\textwidth]{GEECC-workflow_step4}
+\caption{\textbf{Outcome of step 4.} Heatmap showing the result of a simple two way analysis with a category with two variables \cat{deg} (\var{up} and \var{down}) and a category with many variables (\cat{go}). Colored cells are the log$_2$ odds ratio indicating over- and under-representation. Stars show significance of the odds ratio.}
+\label{fig:GEECC-workflow_step4}
+\end{figure}
+\end{landscape}
+
+
+For this example the outcome is shown in Figure \ref{fig:GEECC-workflow_step4}. Each cell in the heatmap corresponds to the (log$_2$) odds ratio for the variables compared. The default is to express enrichment (over-representation) of variables by red colors. Under-representation is emphasized by blue colors. Stars (or a dot) within each cell show the degree of significance of over- and under-representation in analogy to other tests, i.e. '.' corresponds to a $P$-value between $0.05$ and $0.01$, whereas '****' indicates that the $P$-value is smaller than $0.001$, for example. Some cells are white colored. These cells usually correspond to not-performed test due to filter-settings.
+
+In three-ways approaches the \Rfunction{plotConCub} will create multiple heatmaps at the same time. So it is recommended to surround this command by a loop which puts each heatmap into a separate (svg, jpg, ...) file (can be controled by the \Rparameter{fix.cat}-parameter) or to put everything into a pdf-file (as indicated by the comment out lines in the example).
+
+The \Rfunction{filterConCub} allows to adjust $P$-values for multiple testing at an early stage. However, the adjustment is made for the whole data, which might not be the best time point for adjustment for some experiments. In this case, setting \Rcode{p.adjust.method="none"} skips $P$-value adjustment. The adjustment can then be done on the table obtained by the \Rfunction{getTable}:
+<<p_adjust, eval=FALSE>>=
+res2wa <- getTable(CC.obj3, na.rm=TRUE, dontshow=list(deg=c("up", "down")))
+res2wa[, 'p.value.bh'] <- p.adjust(res2wa[, 'p.value'], method="BH")
+res2wa <- res2wa[ res2wa[, 'p.value.bh'] <= 0.05, ]
+@
+Here we select the results for all differentially expressed genes and apply a Benjamini-Hochberg adjustment on the $P$-values.
+
+
+
+
+
+
+
+\section{Working with three categories}
+
+\subsection{Testing for mutual independence}
+We stay with the data from the worked example. A typical first question that might be asked is, if independence of \cat{deg}, \cat{len} and \cat{go} for some combinations of variables can be confirmed.
+
+We confine ourselves to the results from the worked example to test for mutual independence of the three categories. For this, we have to set the \Rparameter{null.model}-parameter accordingly: \Rcode{null.model=$\sim$ deg+go+len}.
+
+<<example3dmi, eval=TRUE, echo=TRUE, results=hide>>=
+CCF.obj.3wmi <- new("concubfilter", names=names(CatList), p.value=0.5, 
+  test.direction="two.sided", skip.min.obs=2)
+CC.obj.3wmi <- new("concub", fact=CatList, population=rownames(marioni), 
+  null.model=~deg+go+len)
+gorange <- as.character(unique(res2w$go))
+CC.obj2.3wmi <- runConCub( obj=CC.obj.3wmi, filter=CCF.obj.3wmi, 
+  nthreads=4, rng=list(go=gorange) )
+drop.insignif.layer(CCF.obj.3wmi) <- setNames(c(FALSE, TRUE, FALSE), names(CatList))
+p.value(CCF.obj.3wmi) <- 0.01
+CC.obj3.3wmi <- filterConCub( obj=CC.obj2.3wmi, filter=CCF.obj.3wmi, 
+  p.adjust.method="BH")
+@
+<<example3dmi_plot, eval=TRUE, echo=TRUE, fig=TRUE, include=FALSE>>=
+## pdf("output.3w.pdf")
+plotConCub( obj=CC.obj3.3wmi, filter=CCF.obj.3wmi, col=list(range=c(-5,5)) 
+  , alt.names=translation, t=FALSE, dontshow=list(deg=c("diff"))
+  , args_heatmap.2=list(Rowv=TRUE, dendrogram="row", margins=c(3,12))
+)
+## dev.off()
+res3wmi <- getTable(obj=CC.obj3.3wmi, na.rm=TRUE)
+@
+
+\begin{landscape}
+\begin{figure}[hp]
+\center
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=1]{GEECC-example3dmi_plot}~
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=2]{GEECC-example3dmi_plot}
+\caption{\textbf{Outcome of a test on mutual independence.} Results for up- and down-regulated genes.}
+\label{fig:GEECC-example3dmi_plot_up}
+\end{figure}
+\end{landscape}
+
+We see some differences in the sequence lengths of up- and down-regulated genes. For instance, we see that enrichment of GO term 'peroxisomal matrix' in up-regulated genes is caused by small-size sequences, whereas enrichment of GO term 'acrosomal vesicle' is caused by long sequences.
+
+
+
+\subsection{Joint independence}
+
+Testing for mutual independence of all three categories gives a first idea, but finally little information since there are multiple non-three-way associations that can cause rejection of this nullhypothesis. We can go deeper to figure out the single pairwise (joint) dependencies applying \texttt{$\sim$ deg+go*len}, \texttt{$\sim$ deg*go+len}, or \texttt{$\sim$ deg*len+go}.
+
+<<example3wsp1, eval=TRUE, echo=TRUE, results=hide>>=
+CCF.obj.3wsp1 <- new("concubfilter", names=names(CatList), p.value=0.5, 
+  test.direction="two.sided", skip.min.obs=2)
+CC.obj.3wsp1 <- new("concub", fact=CatList, population=rownames(marioni), 
+  null.model=~deg+go*len)
+gorange <- as.character(unique(res3wmi$go))
+CC.obj2.3wsp1 <- runConCub( obj=CC.obj.3wsp1, filter=CCF.obj.3wsp1, nthreads=2, 
+  rng=list(go=gorange) )
+drop.insignif.layer(CCF.obj.3wsp1) <- setNames(c(FALSE, TRUE, FALSE), names(CatList))
+p.value(CCF.obj.3wsp1) <- 0.05
+CC.obj3.3wsp1 <- filterConCub( obj=CC.obj2.3wsp1, filter=CCF.obj.3wsp1, 
+  p.adjust.method="BH")
+@
+<<example3wsp1_plot, eval=TRUE, echo=FALSE, fig=TRUE, include=FALSE>>=
+## pdf("output.3w.ji.pdf")
+plotConCub( obj=CC.obj3.3wsp1, filter=CCF.obj.3wsp1, col=list(range=c(-5,5))
+  , alt.names=translation, t=FALSE, dontshow=list(deg=c("diff"))
+  , args_heatmap.2=list(Rowv=TRUE, dendrogram="row", margins=c(3,12))
+)
+## dev.off()
+@
+
+\begin{landscape}
+\begin{figure}[hp]
+\center
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=1]{GEECC-example3wsp1_plot}~
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=2]{GEECC-example3wsp1_plot}
+\caption{\textbf{Outcome of a test on joint independence.} Results for up- and down-regulated genes.}
+\label{fig:GEECC-example3wsp1_plot_up}
+\end{figure}
+\end{landscape}
+
+From Figure \ref{fig:GEECC-example3wsp1_plot_up} we see that this null-modell does not sufficiently describe most of the combinations between variables of categories. There are still many rejections (significant $P$-values). For the following variables this null-model seem to fit:
+<<miandsp1, eval=TRUE, echo=TRUE>>=
+res3wsp1 <- getTable(obj=CC.obj3.3wsp1, na.rm=TRUE)
+res3wmi_sig <- res3wmi[res3wmi$p.value < 0.05, ]
+res3wsp1_sig <- res3wsp1[res3wsp1$p.value < 0.05, ]
+
+head(res3wmi_sig[ !(do.call("paste", res3wmi_sig[,names(CatList)]) 
+  %in% do.call("paste", res3wsp1_sig[,names(CatList)])), 1:8])
+@
+So, for these variables there seem to be no hint that differential expression on the one hand and function and sequence length on the other hand are not independent from each other.
+
+
+
+\subsection{No threeway interaction vs. saturated model}
+Finally, we test for the last null-model in the hierarchy of log-linear models. Here we detect those combinations which are probably really completely depending on each other.
+<<example3wnti, eval=TRUE, echo=TRUE, results=hide>>=
+CCF.obj.3wnti <- new("concubfilter", names=names(CatList), p.value=0.5, 
+  test.direction="two.sided", skip.min.obs=2)
+CC.obj.3wnti <- new("concub", fact=CatList, population=rownames(marioni),
+  null.model=~len*go+deg*go+deg*len)
+gorange <- as.character(unique(res3wmi$go))
+CC.obj2.3wnti <- runConCub( obj=CC.obj.3wnti, filter=CCF.obj.3wnti, 
+  nthreads=4, rng=list(go=gorange) )
+CC.obj3.3wnti <- filterConCub( obj=CC.obj2.3wnti, filter=CCF.obj.3wnti, 
+  p.adjust.method="BH")
+@
+<<example3wnti_plot, eval=TRUE, echo=TRUE, fig=TRUE, include=FALSE>>=
+## pdf("output.3w.ha.pdf")
+plotConCub( obj=CC.obj3.3wnti, filter=CCF.obj.3wnti, col=list(range=c(-5,5))
+  , alt.names=translation, t=FALSE, dontshow=list(deg=c("diff"))
+  , args_heatmap.2=list(Rowv=TRUE, dendrogram="row", margins=c(3,12))
+)
+## dev.off()
+@
+
+\begin{landscape}
+\begin{figure}[hp]
+\center
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=1]{GEECC-example3wnti_plot}~
+\includegraphics[width=0.85\textwidth, height=1\textwidth, page=2]{GEECC-example3wnti_plot}
+\caption{\textbf{Outcome of a test on no three-way interaction.} Up- and down-regulated genes. }
+\label{fig:GEECC-example3wnti_plot_up}
+\end{figure}
+\end{landscape}
+
+It seems that this model describes the data well, i.e. for all combinations of variables considered here there seem to be no evidence that assumption of no three-way interaction should be rejected. However, we skipped several other null-models in the hierarchy of log-linear models, which might fit the data as well and in a more parsimonious way.
+
+
+\subsection{Making use of ordinal variables}
+
+In general, the category variables are nominal, but not ordinal. However, in the example above the third category (sequence length \cat{len}) is ordinal. \Rpack{geecc} provides additional methods to ask for simple extended questions. For instance, one might not be interested in enrichment of up-regulated genes having the lowest sequence length in the binning and which also belong to a certain GO term. Instead, one might want to ask, if there is a relationship for 'short' ('0') sequences without knowing when a sequence is a short one and when it is not short anymore. In such case one might make use of the additional \Rparameter{options}. For the case described in this paragraph, one might set \Rcode{options=list(len=list(grouping="cumf"))}. This cumulatively summarizes the \cat{len}-levels from left to right and performs the test.
+
+
+
+\bibliographystyle{alpha}
+\bibliography{geecc}
+
+\end{document}
