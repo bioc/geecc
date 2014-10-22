@@ -210,7 +210,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 					res <- .performTest_approx(frm, CT, CT, minExpectedValues=min(ExpectedValues), approx=obj@approx, nthreads, test.direction(filter))
 				}
 
-				res <- c(res, list(subpop=subpop, tab=CT))
+				res <- c(res, list(subpop=subpop))
 				RES_CAT2[[ term2 ]] <- res
 			}
 			if(NCATS==3){
@@ -227,7 +227,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 					
 					CT <- array(NA, dim=c(2,2,2), dimnames=list( factor1=c( term1, paste('not_', term1, sep="") ), factor2=c( term2, paste('not_', term2, sep="") ), factor3=c( term3, paste('not_', term3, sep="") ) ))
 					names(dimnames(CT)) <- nms_fact
-					res <- list("estimate"=1, p.value=1, subpop=subpop, tab=CT)
+					res <- list("estimate"=1, p.value=1, subpop=subpop)
 
 
 					if( skip.zeroobs(filter) && len_subpop == 0 || skip.min.obs(filter) >= len_subpop ){ RES_CAT3[[ term3 ]] <- res; next; } # skip if not enough items in x000
@@ -250,7 +250,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 						}
 					}
 
-					RES_CAT3[[ term3 ]] <- c(res, list(subpop=subpop, tab=CT))
+					RES_CAT3[[ term3 ]] <- c(res, list(subpop=subpop))
 				}  # END loop g3
 
 				tmp_nms3 <- names( RES_CAT3 )
@@ -355,14 +355,12 @@ return(x)
 		dn <- nms_fact[d]
 		KEEP <- c()
 		if( drop.lowl2or.layer(filter)[dn] ){
-			local__val <- minimum.l2or(filter)
-			keep <- apply(abs(log2(ODDSRATIO)), d, function(x){if( all( x < local__val, na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
+			keep <- apply(abs(log2(ODDSRATIO)), d, function(x){if( all( x < minimum.l2or(filter), na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
 			KEEP <- cbind(KEEP, keep)
 		}
 	
 		if( drop.insignif.layer(filter)[dn]  ){
-			local__filter_p.value <- p.value(filter)
-			keep <- apply(PVAL, d, function(x){if( all( x > local__filter_p.value, na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
+			keep <- apply(PVAL, d, function(x){if( all( x > p.value(filter), na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
 			KEEP <- cbind(KEEP, keep)
 		}
 		
@@ -400,6 +398,11 @@ filterConCub <- function(obj, filter, p.adjust.method='none'){
 	split_all_lab <- strsplit(all_lab, split=my_separator)
 	dmnms <- matrix(unlist(split_all_lab), nrow=length(split_all_lab), byrow=TRUE)
 	dmnms0 <- setNames(apply(dmnms, 2, unique), nms_fact)
+	
+	## guarantee correct order (stored in sub_factor)
+	sub_factor <- .getNamesOfEachFactor(obj)
+	for( i in 1:length( dmnms0 ) ){	dmnms0[[i]] <- intersect( sub_factor[[i]], dmnms0[[i]] ) }
+	
  	M <- array( NA, dim=c(unlist(sapply(dmnms0, length))), dimnames=dmnms0)
  	PVAL <- ODDSRATIO <- M
 

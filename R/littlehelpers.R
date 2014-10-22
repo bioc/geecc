@@ -50,12 +50,14 @@ return(loadedList)
 
 
 
-
 .translate <- function(x, margin=2, translation=NULL){
 	if(is.null(translation)){return(x)}
-	dimnames(x)[[margin]] <- translation[dimnames(x)[[margin]]]
+ 	dimnames(x)[[margin]] <- translation[dimnames(x)[[margin]]]
 return(x)
 }
+
+
+
 
 
 

@@ -176,7 +176,7 @@ In the last step, the test results are visualized and can be stored in a \Rcode{
 
 <<workflow_step4, eval=TRUE, echo=TRUE, fig=TRUE, include=FALSE>>=
 ## interpretation of raw GO ids is difficult, use term description
-translation <- list(go=setNames(sapply(names(category2), Term), names(category2)))
+translation <- list( go=setNames(sapply(names(category2), function(v){t <- Term(v); if(is.na(t)){return(v)}else{return(t)}}), names(category2)) )
 ## pdf("output.2w.pdf")
 plotConCub( obj=CC.obj3, filter=CCF.obj, col=list(range=c(-5,5)) 
   , alt.names=translation, t=TRUE, dontshow=list(deg=c("diff"))

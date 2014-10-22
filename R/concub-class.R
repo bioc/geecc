@@ -82,7 +82,7 @@ setMethod("show", "concub", function(object){
 	.printsepline()
 
 	satmod <- paste0( "count ~ ", paste0(names(object@fact), collapse="*") )
-	cat("Comparing null-model ", paste0("count ~ ", as.character(object@null.model)[2]), " against alternative model ", satmod, " \n", sep="")
+	cat("Comparing null-model '", paste0("count ~ ", as.character(object@null.model)[2]), "' against alternative model '", satmod, "' \n", sep="")
 	cat("Using chi-squared approximation"); if(object@approx>0){ cat(" unless expected value greater than ", object@approx, "\n", sep="") }
 	cat("\n\n")
 
@@ -94,9 +94,10 @@ setMethod("show", "concub", function(object){
 		if( Lxi > 5 ){cat("[... output truncated after 5 items]\n", sep="")}
 		cat("\n")
 	}
-	cat("Population provided or guessed from categories (", length(object@population), " items):\n", sep="")
-	print(head(object@population, 50))
-	if(length(object@population)>50){cat("[... output truncated after 50 items]\n", sep="")}
+	Lpop <- length(object@population)
+	cat("Population provided or guessed from categories (", Lpop, " items):\n", sep="")
+	print(head(object@population, 20))
+	if(Lpop>20){cat("[... output truncated after 20 items]\n", sep="")}
 	cat("\n\n")
 
 # 	cat("")

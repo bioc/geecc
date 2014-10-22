@@ -14,8 +14,13 @@ KEGG2list(dbase, rm = NULL, keep = NULL)
 }
 \arguments{
   \item{dbase}{
-A database (usually of class \sQuote{ProbeGo3AnnDbBimap} (as defined in package \dQuote{AnnotationDbi})) or named list containing GO or KEGG information
-}
+	A datastructure storing identifieres of GO/KEGG terms and assigned genes. Can be one of
+  	\describe{
+	\item{database}{ usually of class \sQuote{ProbeGo3AnnDbBimap} (as defined in package \dQuote{AnnotationDbi}) }
+	\item{named list}{ with keys being the identifiers and values being genes }
+	\item{dataframe}{ with first column being the identifiers and second column being genes. Additional columns are ignored. }
+	}
+  }
   \item{go.cat}{GO category ("MF", "BP", "CC") that should be returned and filtered}
   \item{rm}{remove these terms}
   \item{keep}{keep only these terms}
