@@ -1,9 +1,23 @@
 
+.getLoadedList <- function( dbase, call ){
 
+	if( is.list(dbase) ){ return(dbase) }	# dbase is list (keys=GO, value=genes)
+	if( is.data.frame(dbase) || is.matrix(dbase) ){ 		# dbase is matrix or dataframe (col1=GO, col2=genes)
+		loadedList <- split( as.character(dbase[, 2]), factor(as.character(dbase[, 1])) )
+		return(loadedList)
+	}
+	if( length(grep( class(dbase), pattern="bimap", ignore.case=TRUE )) > 0 ){ # dbase is Bimap
+			if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning empty list.")); return(list()) }
+			loadedList <- AnnotationDbi::as.list(dbase)
+			return(loadedList)
+	}
+	
+	warning(paste0("Data structure of passed object dbase=", call, " not supported. Returning empty list.")); return(list())
+}
 
 GO2list <- function(dbase, go.cat=NULL, rm=NULL, keep=NULL){
-	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning empty list.")); return(list()) }
-	loadedList <- AnnotationDbi::as.list(dbase)
+
+	loadedList <- .getLoadedList(dbase, call=deparse(substitute(dbase)))
 
 	if(!is.null(go.cat)){ #remove GO categories
 		if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning empty list.")); return(list()) }
@@ -19,10 +33,9 @@ GO2list <- function(dbase, go.cat=NULL, rm=NULL, keep=NULL){
 return(loadedList)
 }
 
-
 KEGG2list <- function(dbase, rm=NULL, keep=NULL){
-	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning empty list.")); return(list()) }
-	loadedList <- AnnotationDbi::as.list(dbase)
+
+	loadedList <- .getLoadedList(dbase, call=deparse(substitute(dbase)))
 
 	if(!is.null(rm)){ #remove KEGG pathways
 		loadedList <- loadedList[ setdiff( toupper(names(loadedList)), toupper(rm) ) ]

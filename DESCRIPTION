@@ -1,8 +1,8 @@
 Package: geecc
 Type: Package
 Title: Gene set Enrichment analysis Extended to Contingency Cubes
-Version: 1.1.0
-Date: 2014-09-18
+Version: 1.1.1
+Date: 2014-10-21
 Author: Markus Boenn
 Maintainer: Markus Boenn <markus.boenn@ufz.de>
 Description: Use log-linear models to perform hypergeometric and
