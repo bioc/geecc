@@ -1,6 +1,6 @@
 import(methods)
 import(MASS, gplots, hypergea)
-export("runConCub", "filterConCub", "plotConCub", "GO2list", "KEGG2list")
+export("runConCub", "filterConCub", "plotConCub", "GO2list", "KEGG2list", "GO2level")
 exportClasses("concub", "concubfilter")
 exportMethods("show", "initialize", "getTable")
 export(p.value, "p.value<-"

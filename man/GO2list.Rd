@@ -1,16 +1,18 @@
 \name{GO2list}
 \alias{GO2list}
 \alias{KEGG2list}
+\alias{GO2level}
 
 \title{
 Filter GO and KEGG database
 }
 \description{
-Filter GO and KEGG database and transforms database to list
+Filter GO and KEGG database and transform database to list
 }
 \usage{
 GO2list(dbase, go.cat = NULL, rm = NULL, keep = NULL)
 KEGG2list(dbase, rm = NULL, keep = NULL)
+GO2level(x, go.level="all")
 }
 \arguments{
   \item{dbase}{
@@ -21,7 +23,9 @@ KEGG2list(dbase, rm = NULL, keep = NULL)
 	\item{dataframe}{ with first column being the identifiers and second column being genes. Additional columns are ignored. }
 	}
   }
+  \item{x}{a list with keys being the identifiers and values being genes (e.g. output of \code{GO2list})}
   \item{go.cat}{GO category ("MF", "BP", "CC") that should be returned and filtered}
+  \item{go.level}{Level in the DAG of GO terms. Defaults to \dQuote{all} for pass through without modification. Otherwise: an integer giving the level at which GO terms should be grouped together.}
   \item{rm}{remove these terms}
   \item{keep}{keep only these terms}
 }
@@ -30,6 +34,8 @@ KEGG2list(dbase, rm = NULL, keep = NULL)
 The settings for \dQuote{rm} and \dQuote{keep} can be combined, allowing for efficient reduction of the number of GO terms and KEGG pathways, respectively.
 
 Providing a named list instead of a database can be useful for non-model organisms, where only a draft Blast2GO-annotation is available. In this case, the names of the list are the GO terms (or KEGG pathways) and the content of each list item is a character vector with tag-ids.
+
+The function \code{GO2level} groups GO terms together at a more general level to simplify data interpretation and speed up runtime. This function works according to the level option provided by DAVID, but the number of levels is not restricted.
 }
 
 \value{

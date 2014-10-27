@@ -50,6 +50,64 @@ return(loadedList)
 
 
 
+GO2level <- function(x, go.level="all"){
+	if( go.level=="all" ){ return(x) }
+	
+	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(list()) }
+	
+	u <- unlist(Term(GOTERM))
+	u2 <- u[grep("biological_process|molecular_function|cellular_component", u)]
+	goid_gene_ontology <- "GO:0003673"
+	roots_id2term <- u2
+	roots_term2id <- setNames( names(u2), u2 )
+	print(u2)
+	
+	
+	my_get <- function(id){
+ 		bp <- unlist(mget(id, GOBPCHILDREN, ifnotfound=NA), use.names=FALSE)
+ 		cc <- unlist(mget(id, GOCCCHILDREN, ifnotfound=NA), use.names=FALSE)
+ 		mf <- unlist(mget(id, GOMFCHILDREN, ifnotfound=NA), use.names=FALSE)
+		res <- unique( c( bp, cc, mf ) )
+	return( res[ !is.na(res) ] )
+	}
+	my_getOffspring <- function(id){
+		bp <- mget(id, GOBPOFFSPRING, ifnotfound=NA)
+ 		cc <- mget(id, GOCCOFFSPRING, ifnotfound=NA)
+ 		mf <- mget(id, GOMFOFFSPRING, ifnotfound=NA)
+		res <- c( bp, cc, mf )
+	return( res[ !is.na(res) ] )
+	}
+
+	my_getAncestor <- function(id){
+		bp <- mget(id, GOBPANCESTOR, ifnotfound=NA)
+ 		cc <- mget(id, GOCCANCESTOR, ifnotfound=NA)
+ 		mf <- mget(id, GOMFANCESTOR, ifnotfound=NA)
+		res <- unique( unlist(c( bp, cc, mf ) ))
+
+	return( res[ !is.na(res) ] )
+	}
+
+	
+	allAncestors <- my_getAncestor(names(x))
+	xx <- list()
+	if(is.numeric(go.level)){
+		goid <- my_get( names(roots_id2term) )
+		l <- 1
+		while( l<=go.level ){
+			goid <- my_get( c(goid) )
+			l <- l+1
+		}
+		
+		#summarize GO terms
+		goid <- intersect(goid, allAncestors)
+		off <- my_getOffspring( goid )
+		xx <- sapply( off, function( v ){ unique(unlist(x[ v ])) } )
+	}else{ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("all"), " or non-negative integer. Returning input list unmodified.")); return(x); }
+
+return(xx)
+}
+
+
 .translate <- function(x, margin=2, translation=NULL){
 	if(is.null(translation)){return(x)}
  	dimnames(x)[[margin]] <- translation[dimnames(x)[[margin]]]
