@@ -12,7 +12,7 @@ Filter GO and KEGG database and transform database to list
 \usage{
 GO2list(dbase, go.cat = NULL, rm = NULL, keep = NULL)
 KEGG2list(dbase, rm = NULL, keep = NULL)
-GO2level(x, go.level="all")
+GO2level(x, go.level=-1)
 }
 \arguments{
   \item{dbase}{
@@ -25,7 +25,7 @@ GO2level(x, go.level="all")
   }
   \item{x}{a list with keys being the identifiers and values being genes (e.g. output of \code{GO2list})}
   \item{go.cat}{GO category ("MF", "BP", "CC") that should be returned and filtered}
-  \item{go.level}{Level in the DAG of GO terms. Defaults to \dQuote{all} for pass through without modification. Otherwise: an integer giving the level at which GO terms should be grouped together.}
+  \item{go.level}{Level in the DAG of GO terms. Defaults to \dQuote{-1} for pass through without modification. Otherwise: a positive integer giving the level at which GO terms should be grouped together.}
   \item{rm}{remove these terms}
   \item{keep}{keep only these terms}
 }

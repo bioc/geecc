@@ -50,8 +50,9 @@ return(loadedList)
 
 
 
-GO2level <- function(x, go.level="all"){
-	if( go.level=="all" ){ return(x) }
+GO2level <- function(x, go.level=-1){
+	if( !is.numeric(go.level) ){ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("-1"), " or positive integer. Returning input list unmodified.")); return(x); }
+	if( go.level==-1 || go.level==0 ){ return(x) }
 	
 	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(list()) }
 	
@@ -60,7 +61,7 @@ GO2level <- function(x, go.level="all"){
 	goid_gene_ontology <- "GO:0003673"
 	roots_id2term <- u2
 	roots_term2id <- setNames( names(u2), u2 )
-	print(u2)
+	#print(u2)
 	
 	
 	my_get <- function(id){
@@ -89,20 +90,17 @@ GO2level <- function(x, go.level="all"){
 
 	
 	allAncestors <- my_getAncestor(names(x))
-	xx <- list()
-	if(is.numeric(go.level)){
-		goid <- my_get( names(roots_id2term) )
-		l <- 1
-		while( l<=go.level ){
-			goid <- my_get( c(goid) )
-			l <- l+1
-		}
-		
-		#summarize GO terms
-		goid <- intersect(goid, allAncestors)
-		off <- my_getOffspring( goid )
-		xx <- sapply( off, function( v ){ unique(unlist(x[ v ])) } )
-	}else{ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("all"), " or non-negative integer. Returning input list unmodified.")); return(x); }
+	goid <- my_get( names(roots_id2term) )
+	next.level <- 2
+	while( next.level<=go.level ){
+		goid <- my_get( c(goid) )
+		next.level <- next.level+1
+	}
+	
+	#summarize GO terms
+	goid <- intersect(goid, allAncestors)
+	off <- my_getOffspring( goid )
+	xx <- sapply( off, function( v ){ unique(unlist(x[ v ])) } )
 
 return(xx)
 }
