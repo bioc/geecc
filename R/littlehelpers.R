@@ -48,13 +48,33 @@ return(loadedList)
 }
 
 
+GO2offspring <- function(x){
+	if(!is.list(x)){ warning(paste0("Parameter ", sQuote("x"), " must be a list. Returning input unmodified.")); return(x) }
+	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	
+	my_getOffspring <- function(id){
+		bp <- mget(id, GOBPOFFSPRING, ifnotfound=NA)
+ 		cc <- mget(id, GOCCOFFSPRING, ifnotfound=NA)
+ 		mf <- mget(id, GOMFOFFSPRING, ifnotfound=NA)
+		res <- c( bp, cc, mf )
+	return( res[ !is.na(res) ] )
+	}
 
+	
+	R <- 1:length(x)
+	nms <- names(x)
+	off <- my_getOffspring(nms)
+	print(str(off[1:10]))
+	xx <- sapply( R, function( r ){ v <- unique( unlist(c( x[[ nms[r] ]], x[ off[[ nms[r] ]] ] )) ); return( v[!is.na(v)] ) }  )
+	names(xx) <- nms
+return(xx)
+}
 
 GO2level <- function(x, go.level=-1){
 	if( !is.numeric(go.level) ){ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("-1"), " or positive integer. Returning input list unmodified.")); return(x); }
 	if( go.level==-1 || go.level==0 ){ return(x) }
 	
-	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(list()) }
+	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
 	
 	u <- unlist(Term(GOTERM))
 	u2 <- u[grep("biological_process|molecular_function|cellular_component", u)]
