@@ -89,7 +89,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 
 
 	sub_factor <- .getNamesOfEachFactor(obj) # names of categories
-	if( !is.null(rng) ){ for(nm in names(rng)){sub_factor[[ nm ]] <- rng[[nm]]; } }
+	if( !is.null(rng) ){ for(nm in names(rng)){sub_factor[[ nm ]] <- intersect(rng[[nm]], sub_factor[[ nm ]]); } } # use intersect to avoid incorp of variables that have been dropped because, e.g., they are empty
 	len_sub_factor <- sapply(sub_factor, length)
 
 
@@ -270,8 +270,8 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
  	} # END loop g1
  	cat("\n")
  	
-	p <- sapply(ITER, is.null)
- 	obj@test.result <- ITER[!p]
+	#p <- sapply(ITER, is.null)
+ 	obj@test.result <- ITER #[!p]
 
 return(obj)
 }
@@ -389,25 +389,50 @@ filterConCub <- function(obj, filter, p.adjust.method='none'){
 
 	ResultTest <- obj@test.result
 
-
 	##############################################################
 	my_separator <- .my_separator()
 
-	checkValid_ResultTest <- sapply(ResultTest, function(x){is.null(x[['p.value']])})
-	all_lab <- names(checkValid_ResultTest[!checkValid_ResultTest])
+# 	checkValid_ResultTest <- sapply(ResultTest, function(x){is.null(x[['p.value']])})
+# 	all_lab <- names(checkValid_ResultTest[!checkValid_ResultTest])
+	all_lab <- names(ResultTest)
+
 	split_all_lab <- strsplit(all_lab, split=my_separator)
 	dmnms <- matrix(unlist(split_all_lab), nrow=length(split_all_lab), byrow=TRUE)
 	dmnms0 <- setNames(apply(dmnms, 2, unique), nms_fact)
-	
+
 	## guarantee correct order (stored in sub_factor)
 	sub_factor <- .getNamesOfEachFactor(obj)
 	for( i in 1:length( dmnms0 ) ){	dmnms0[[i]] <- intersect( sub_factor[[i]], dmnms0[[i]] ) }
-	
+
  	M <- array( NA, dim=c(unlist(sapply(dmnms0, length))), dimnames=dmnms0)
  	PVAL <- ODDSRATIO <- M
-
-	PVAL[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'p.value' ]][1]})
-	ODDSRATIO[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'estimate' ]][1]})
+ 	if(NCATS==2){
+		for( i in 1:length( split_all_lab ) ){
+			ii <- split_all_lab[[i]]
+			if( is.null(ResultTest[[ all_lab[i] ]][[ 'p.value' ]][1]) ){
+				PVAL[ ii[1], ii[2] ] <- NA
+				ODDSRATIO[ ii[1], ii[2] ] <- NA
+			}else{
+				PVAL[ ii[1], ii[2] ] <- ResultTest[[ all_lab[i] ]][[ 'p.value' ]][1]
+				ODDSRATIO[ ii[1], ii[2] ] <- ResultTest[[ all_lab[i] ]][[ 'estimate' ]][1]
+			}
+		}
+ 	}
+ 	if(NCATS==3){
+		for( i in 1:length( split_all_lab ) ){
+			ii <- split_all_lab[[i]]
+			if( is.null(ResultTest[[ all_lab[i] ]][[ 'p.value' ]][1]) ){
+				PVAL[ ii[1], ii[2], ii[3] ] <- NA
+				ODDSRATIO[ ii[1], ii[2], ii[3] ] <- NA
+			}else{
+				PVAL[ ii[1], ii[2], ii[3] ] <- ResultTest[[ all_lab[i] ]][[ 'p.value' ]][1]
+				ODDSRATIO[ ii[1], ii[2], ii[3] ] <- ResultTest[[ all_lab[i] ]][[ 'estimate' ]][1]
+			}
+		}
+ 	}
+# 
+# 	PVAL[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'p.value' ]][1]})
+# 	ODDSRATIO[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'estimate' ]][1]})
 	rm(M)
 	rm(split_all_lab)
 
@@ -429,11 +454,11 @@ filterConCub <- function(obj, filter, p.adjust.method='none'){
 	###
 	### drop slices with zero/NaN/Inf-valued odds ratio
 	###
-	for(d in 1:NCATS){
-		keep <- apply(ODDSRATIO, d, function(x){ if( all(.checkValidOddsRatio(c(x))) ){return(FALSE)}else{return(TRUE)} })
-		ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
-		PVAL <- .keepLayer(PVAL, keep, NCATS, d)
-	}
+# 	for(d in 1:NCATS){
+# 		keep <- apply(ODDSRATIO, d, function(x){ if( all(.checkValidOddsRatio(c(x))) ){return(FALSE)}else{return(TRUE)} })
+# 		ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
+# 		PVAL <- .keepLayer(PVAL, keep, NCATS, d)
+# 	}
 
 
 	###
@@ -500,7 +525,7 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 	}
 
 	COL_RANGE <- col$range
-	tmp <- log2(ODDSRATIO_0); #tmp[which( is.nan(tmp) | tmp == -Inf | tmp == Inf | is.na(tmp) )] <- 0
+	tmp <- log2(ODDSRATIO_0); tmp[which( is.nan(tmp) | tmp == -Inf | tmp == Inf | is.na(tmp) )] <- 0
 	if( is.null(col$range) ){ COL_RANGE <- range( c(tmp), na.rm=TRUE ); COL_RANGE <- c( -max(abs(COL_RANGE)), +max(abs(COL_RANGE)) ); }
 	COL_LEVELS <- seq( COL_RANGE[1], COL_RANGE[2], length.out=1000 )
 	COLORS <- c(colorpanel(floor(length(c(COL_LEVELS))/2), low='violet', mid='blue', high='white'), colorpanel(ceiling(length(COL_LEVELS)/2), low='white', mid='orange', high='red'))
@@ -523,8 +548,12 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 		}
 
 		# don't show NA-rows and NA-cols; they are not removed by 'filter'-method when dontshow-option is used
-		keep <- apply( ODDSRATIO_1, 1, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[keep, ]; PVAL_1 <- PVAL_1[keep, ]
-		keep <- apply( ODDSRATIO_1, 2, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[, keep]; PVAL_1 <- PVAL_1[, keep]
+		if( !obj@keep.empty.vars[[ names(dimnames(ODDSRATIO_1))[1] ]] ){
+			keep <- apply( ODDSRATIO_1, 1, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[keep, ]; PVAL_1 <- PVAL_1[keep, ]
+		}
+		if( !obj@keep.empty.vars[[ names(dimnames(ODDSRATIO_1))[2] ]] ){
+			keep <- apply( ODDSRATIO_1, 2, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[, keep]; PVAL_1 <- PVAL_1[, keep]
+		}
 		tmp <- .filter_dropLayer( filter, 2, ODDSRATIO_1, PVAL_1, names(dimnames(ODDSRATIO_1)) )
 		ODDSRATIO_1 <- tmp[[1]]; PVAL_1 <- tmp[[2]]
 		rm(tmp, keep)
@@ -565,11 +594,13 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 		hm2 <- do.call("heatmap.2", local_args_heatmap.2)
 		lab <- paste(fix.cat, names(obj@fact[[fix.cat]])[cnt], sep=", ")
 		title(main=ifelse(NCATS==3, paste(fix.cat, names(obj@fact[[fix.cat]])[cnt], sep=", "), ""))
-		CollectPlots[[ lab ]] <- hm2
+		CollectPlots[[ lab ]] <- list(heat=hm2, p.value=PVAL_1, log2.odds.ratio=ODDSRATIO_2)
+		
 		if(NCATS==2){break;}
 	}
 
 	obj@test.result.filter.heatmap <- CollectPlots
+	
 
 invisible(obj)
 }

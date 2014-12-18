@@ -2,7 +2,7 @@
 
 setClass( "concub",
 	representation(
-		fact="list", population="character", options="list"
+		fact="list", population="character", keep.empty.vars="list", options="list"
 		, approx="numeric", null.model="formula"
 		, test.result="list", test.result.filter="list", test.result.filter.heatmap="list"
 	)
@@ -10,7 +10,7 @@ setClass( "concub",
 
 
 setMethod("initialize", signature="concub"
-	, definition=function(.Object, fact, population, options, approx, null.model){
+	, definition=function(.Object, fact, population, keep.empty.vars, options, approx, null.model){
 
 	test_result <- list()
 	MAX_NUM_FACT_SUPPORT <- 3
@@ -27,13 +27,30 @@ setMethod("initialize", signature="concub"
 		}
 		.Object@fact <- fact
 	}
+	
+	tmp <- setNames( vector("list", len_fact), nms_fact ); tmp <- lapply(tmp, function(x){FALSE})
+	if(missing(keep.empty.vars)){
+		keep.empty.vars <- tmp 
+	}else{
+		keep.empty.vars[ setdiff( names(tmp), names(keep.empty.vars) ) ] <- FALSE
+	}
+	.Object@keep.empty.vars <- keep.empty.vars
 
 
 	if(missing(population)){
 		population <- unique(unlist( sapply( fact, function(x){ unique(unlist(x)) } ) ))
 	}else{
-		if(is.character(population)){fact <- lapply( fact, function(x1){ lapply( x1, function( x ){ return( intersect( x, population ) ) } ) } )}
-		else{
+		if(is.character(population)){
+			fact <- lapply( fact, function(x1){ lapply( x1, function( x ){ isct <- intersect( x, population ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
+			for( i in 1:length(fact) ){
+				ii <- names(fact)[i]
+				# if declared and FALSE, then remove
+				if( !keep.empty.vars[[ ii ]] ){
+					fact[[ ii ]] <- fact[[ ii ]][ !sapply( fact[[ ii ]], is.null) ]
+				} #otherwise keep everything
+			}
+			.Object@fact <- fact
+		}else{
 			if( class(population) %in% c("eSet", "ExpressionSet", "DGEList") ){ 
 				cls <- class(population)
 				population <- rownames(population)
@@ -49,8 +66,8 @@ setMethod("initialize", signature="concub"
 		bool <- .checkFormula(null.model) # stop if invalid formula
 		if( !bool ){return(NULL)}
 	}
-	.Object@null.model <- update(null.model, null.model)
-	if( !missing(approx) ){ .Object@approx <- max(c(approx, 0)) }else{ .Object@approx <- 0 }
+ 	.Object@null.model <- update(null.model, null.model)
+ 	if( !missing(approx) ){ .Object@approx <- max(c(approx, 0)) }else{ .Object@approx <- 0 }
 
 	default_factor_opt <- list( grouping=c("none", 'cumf', 'cumr', 'sw')[1], width=1, strat=FALSE )
 	my_opt <- setNames(vector("list", len_fact), nms_fact)
@@ -91,6 +108,7 @@ setMethod("show", "concub", function(object){
 		Lxi <- length(x[[i]])
 		cat("Category ", i, " (", names(x)[i], ") with ", Lxi, " variables\n", sep="")
 		print(lapply(x[[i]][1:min(5, Lxi)], head))
+		print(sapply(x[[i]][1:min(5, Lxi)], length))
 		if( Lxi > 5 ){cat("[... output truncated after 5 items]\n", sep="")}
 		cat("\n")
 	}
@@ -146,7 +164,7 @@ setMethod(f="getTable", signature="concub",
 		tab2[labs1, 'p.value'] <- pval[ labs0 ]
 		tab2[labs1, 'log2.odds.ratio'] <- log2(or[ labs0 ])
 		tab2[labs1, 'n.tags'] <- sapply(object@test.result[ labs1 ], function(x){length(x$subpop)})
-		tab2[labs1, 'tags'] <- sapply(object@test.result[ labs1 ], function(x){paste(x$subpop, collapse=",")})
+		tab2[labs1, 'tags'] <- sapply(object@test.result[ labs1 ], function(x){paste(x$subpop, collapse=",", sep=",")})
 
 
 		rownames(tab2) <- NULL

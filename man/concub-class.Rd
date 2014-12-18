@@ -21,6 +21,7 @@ Objects can be created by calls of the form \code{new("concub", ...)}.
   \describe{
     \item{\code{fact}:}{ A named list of named lists. Each item of the outer list represents the two or three categories. Each item of the inner lists represents a variable of the category. }
     \item{\code{population}:}{ A character vector containig the background population. As an alternative, an object with class \sQuote{eSet}, \sQuote{ExpressionSet}, or \sQuote{DGEList}; background population is then set to the outcome of \code{rownames(population)}. }
+    \item{\code{keep.empty.vars}:}{ A boolean list with names being names of \code{fact}. }
     \item{\code{options}:}{ Additional options for individual categories. See Details. }
     \item{\code{approx}:}{ specifies the minimum expected value when an exact hypergeometric test (below) or the chi-squared approximation should be used. Defaults to 0. }
     \item{\code{null.model}:}{ A formula specifying the null-model of the test.  }
