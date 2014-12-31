@@ -1,19 +1,13 @@
 
 
 .loglinmodel <- function( CT, null.model=~ factor1 + factor2 + factor3 ){
-# 	dm <- dim(CT)
-# 	tab_lab <- paste(dm[1], dm[2], collapse="x", sep="x")
-# 	if( length(dm) == 3 ){ tab_lab <- paste(tab_lab, dm[3], collapse="x", sep="x") }
 
 	res <- loglm(formula = as.formula(null.model) , data = CT)
 	obj <- list(statistic=setNames(c(res$pearson), c("Pearson"))
 		, parameter=setNames(res$df, "df")
 		, estimate=setNames(getOddsRatio(CT), "odds ratio")
-#		, data.name=paste(c(deparse(substitute(CT)), res$call), collapse=", ")
 		, p.value=(c(summary(res)$tests[2,3]))
-#		, method=paste("Log-linear test for a ", tab_lab, " table", sep="")
 	)
-#	class(obj) <- "htest"
 return(obj)
 }
 
@@ -37,10 +31,8 @@ return(obj)
 return(CT)
 }
 .getContingencyTable <- function( CT, x1__Ix_1_, x2__Ix_2_, x1__Ix_2_, x2__Ix_1_ ){
-	CT[1,1] <- length( ( x1__Ix_1_ ) )
-	CT[1,2] <- length( ( x1__Ix_2_ ) )
-	CT[2,1] <- length( ( x2__Ix_1_ ) )
-	CT[2,2] <- length( ( x2__Ix_2_ ) )
+	CT[1:4] <- c( length( ( x1__Ix_1_ ) ), length( ( x2__Ix_1_ ) ), length( ( x1__Ix_2_ ) ), length( ( x2__Ix_2_ ) ) )
+
 return(CT)
 }
 
@@ -173,6 +165,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 	##
 
 	ITER <- setNames(vector('list', length(tmp0_nms1)), tmp0_nms1)
+	gc()
 	loc_nm1 <- nms_fact[1]
 	for( g1 in 1:length(sub_factor[[ loc_nm1 ]]) ){
 		term1 <- sub_factor[[ loc_nm1 ]][ g1 ]; if(verbose$show.cat1){cat(term1, sep="")}
@@ -206,7 +199,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 
 				if( !( ( skip.zeroobs(filter) && len_subpop == 0 )
 					|| ( skip.min.obs(filter) >= len_subpop )
-					|| all( skip.min.group(filter) - sapply( list( x1__, x_1_ ), length ) > 0 ) ) ){ #perform test when none of the conditions is fulfilled
+					|| all( skip.min.group(filter) - c( length( x1__ ), length(x_1_ ) ) > 0 ) ) ){ #perform test when none of the conditions is fulfilled
 					res <- .performTest_approx(frm, CT, CT, minExpectedValues=min(ExpectedValues), approx=obj@approx, nthreads, test.direction(filter))
 				}
 
@@ -261,12 +254,15 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 				if(verbose$show.cat2){cat("\n\tpassed: category 2 (", nms_fact[2], "), variable ", term2, " (", g2, ")", sep="")}
 				if(verbose$show.cat2){cat("\n")}
 			}
+			
+			if(g2%%10==0){gc()}
 
 		}  # END loop g2
 		tmp_nms2 <- names( RES_CAT2 )
 		ITER[ paste( term1, tmp_nms2, sep=my_separator ) ] <- RES_CAT2[ tmp_nms2 ]
 
 		if( verbose$show.cat1 ){cat("\n")}
+		if(g1%%10==0){gc()}
  	} # END loop g1
  	cat("\n")
  	

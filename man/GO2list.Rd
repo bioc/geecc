@@ -14,7 +14,7 @@ Filter GO and KEGG database and transform database to list
 GO2list(dbase, go.cat = NULL, rm = NULL, keep = NULL)
 KEGG2list(dbase, rm = NULL, keep = NULL)
 GO2offspring(x)
-GO2level(x, go.level=-1)
+GO2level(x, go.level=-1, relation=c("is_a"))
 }
 \arguments{
   \item{dbase}{
@@ -30,6 +30,7 @@ GO2level(x, go.level=-1)
   \item{go.level}{Level in the DAG of GO terms. Defaults to \dQuote{-1} for pass through without modification. Otherwise: a positive integer giving the level at which GO terms should be grouped together.}
   \item{rm}{remove these terms}
   \item{keep}{keep only these terms}
+  \item{relation}{relationships in GO hierarchy that should be considered. Defaults to \dQuote{is_a}}
 }
 
 \details{

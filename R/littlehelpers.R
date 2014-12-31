@@ -1,4 +1,5 @@
 
+
 .getLoadedList <- function( dbase, call ){
 
 	if( is.list(dbase) ){ return(dbase) }	# dbase is list (keys=GO, value=genes)
@@ -48,33 +49,38 @@ return(loadedList)
 }
 
 
+get_gochildren <- function(nms){
+	CAT <- c("BP", "CC", "MF")
+
+}
+
+
 GO2offspring <- function(x){
 	if(!is.list(x)){ warning(paste0("Parameter ", sQuote("x"), " must be a list. Returning input unmodified.")); return(x) }
 	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
-	
-	my_getOffspring <- function(id){
-		bp <- mget(id, GOBPOFFSPRING, ifnotfound=NA)
- 		cc <- mget(id, GOCCOFFSPRING, ifnotfound=NA)
- 		mf <- mget(id, GOMFOFFSPRING, ifnotfound=NA)
-		res <- c( bp, cc, mf )
-	return( res[ !is.na(res) ] )
-	}
-
+	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
 	
 	R <- 1:length(x)
 	nms <- names(x)
-	off <- my_getOffspring(nms)
-	print(str(off[1:10]))
+	bp <- AnnotationDbi::as.list(GOBPOFFSPRING)[ nms ]
+ 	cc <- AnnotationDbi::as.list(GOCCOFFSPRING)[ nms ]
+ 	mf <- AnnotationDbi::as.list(GOMFOFFSPRING)[ nms ]
+	res <- c( bp, cc, mf )
+	off <- res[ !sapply(res, is.null) ]
+	
 	xx <- sapply( R, function( r ){ v <- unique( unlist(c( x[[ nms[r] ]], x[ off[[ nms[r] ]] ] )) ); return( v[!is.na(v)] ) }  )
 	names(xx) <- nms
 return(xx)
 }
 
-GO2level <- function(x, go.level=-1){
+
+GO2level <- function(x, go.level=-1, relation=c("is_a")){
 	if( !is.numeric(go.level) ){ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("-1"), " or positive integer. Returning input list unmodified.")); return(x); }
 	if( go.level==-1 || go.level==0 ){ return(x) }
 	
 	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+
 	
 	u <- unlist(Term(GOTERM))
 	u2 <- u[grep("biological_process|molecular_function|cellular_component", u)]
@@ -82,44 +88,31 @@ GO2level <- function(x, go.level=-1){
 	roots_id2term <- u2
 	roots_term2id <- setNames( names(u2), u2 )
 	#print(u2)
+	CAT <- c("BP", "CC", "MF")
 	
-	
-	my_get <- function(id){
- 		bp <- unlist(mget(id, GOBPCHILDREN, ifnotfound=NA), use.names=FALSE)
- 		cc <- unlist(mget(id, GOCCCHILDREN, ifnotfound=NA), use.names=FALSE)
- 		mf <- unlist(mget(id, GOMFCHILDREN, ifnotfound=NA), use.names=FALSE)
-		res <- unique( c( bp, cc, mf ) )
-	return( res[ !is.na(res) ] )
-	}
-	my_getOffspring <- function(id){
-		bp <- mget(id, GOBPOFFSPRING, ifnotfound=NA)
- 		cc <- mget(id, GOCCOFFSPRING, ifnotfound=NA)
- 		mf <- mget(id, GOMFOFFSPRING, ifnotfound=NA)
-		res <- c( bp, cc, mf )
-	return( res[ !is.na(res) ] )
-	}
-
-	my_getAncestor <- function(id){
-		bp <- mget(id, GOBPANCESTOR, ifnotfound=NA)
- 		cc <- mget(id, GOCCANCESTOR, ifnotfound=NA)
- 		mf <- mget(id, GOMFANCESTOR, ifnotfound=NA)
-		res <- unique( unlist(c( bp, cc, mf ) ))
-
-	return( res[ !is.na(res) ] )
+	my_get <- function(id, type="CHILDREN"){
+		res <- list()
+		for( ct in CAT ){
+			tmp <- AnnotationDbi::as.list( get(paste0("GO", ct, type)) )[ id ];
+			res[[ ct ]] <- lapply(tmp, function(v){ v[names(v) %in% relation] })
+		}
+		res <- unique(unlist(res))
+	return( res[ !sapply(res, is.null) ] )
 	}
 
 	
-	allAncestors <- my_getAncestor(names(x))
-	goid <- my_get( names(roots_id2term) )
+	allAncestors <- my_get(names(x), type="ANCESTOR");
+	goid <- my_get( names(roots_id2term), type="CHILDREN" )
+
 	next.level <- 2
 	while( next.level<=go.level ){
-		goid <- my_get( c(goid) )
+		goid <- my_get( c(goid), type="CHILDREN" )
 		next.level <- next.level+1
 	}
 	
 	#summarize GO terms
-	goid <- intersect(goid, allAncestors)
-	off <- my_getOffspring( goid )
+	goid <- intersect(goid, allAncestors);
+	off <- my_get( goid, type="OFFSPRING" )
 	xx <- sapply( off, function( v ){ unique(unlist(x[ v ])) } )
 
 return(xx)
