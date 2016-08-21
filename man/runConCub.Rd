@@ -8,7 +8,7 @@ Enrichment analysis on two- or three-way contingency tables.
 Perform the enrichment analysis on two- or three-way contingency tables.
 }
 \usage{
-runConCub(obj, filter, nthreads = 2, rng = NULL,
+runConCub(obj, filter, nthreads = 2, subset = NULL,
 	verbose=list(output.step=0, show.cat1=FALSE,
 	show.cat2=FALSE, show.cat3=FALSE))
 }
@@ -16,7 +16,7 @@ runConCub(obj, filter, nthreads = 2, rng = NULL,
   \item{obj}{an object with class concub}
   \item{filter}{an object with class concubfilter}
   \item{nthreads}{number of threads to use in \code{hypergeom.test}}
-  \item{rng}{a named list. Restrict enrichment analysis to these category variables}
+  \item{subset}{a named list. Restrict enrichment analysis to these category variables}
   \item{verbose}{
 	A list to control verbosity:
 		\describe{
@@ -56,7 +56,7 @@ category3 <- split( ID, f=factor(LEN, levels=seq(100, 1000, 100)) )
 CatList <- list(deg=category1, go=category2, len=category3)
 
 ConCubFilter.obj <- new("concubfilter", names=names(CatList))
-ConCub.obj <- new("concub", fact=CatList)
+ConCub.obj <- new("concub", categories=CatList)
 ConCub.obj.2 <- runConCub( obj=ConCub.obj, filter=ConCubFilter.obj, nthreads=1 )
 ConCub.obj.2
 }

@@ -2,7 +2,7 @@
 
 .loglinmodel <- function( CT, null.model=~ factor1 + factor2 + factor3 ){
 
-	res <- loglm(formula = as.formula(null.model) , data = CT)
+	res <- MASS::loglm(formula = as.formula(null.model) , data = CT)
 	obj <- list(statistic=setNames(c(res$pearson), c("Pearson"))
 		, parameter=setNames(res$df, "df")
 		, estimate=setNames(getOddsRatio(CT), "odds ratio")
@@ -38,10 +38,10 @@ return(CT)
 
 
 
-.getItemsInEachFactor <- function(obj){ return(obj@fact) }
-.getNamesOfEachFactor <- function(obj){ return(lapply(obj@fact, names)) }
-.getNumberOfFactorLevels <- function(obj){ return(sapply(obj@fact, length)) }
-.getOptOfFactor <- function(obj){ return(obj@options) }
+.getItemsInEachCategory <- function(obj){ return(obj@categories) }
+.getNamesOfEachCategory <- function(obj){ return(lapply(obj@categories, names)) }
+.getNumberOfFactorLevels <- function(obj){ return(sapply(obj@categories, length)) }
+.getOptOfCategory <- function(obj){ return(obj@options) }
 
 
 #test when choice between hypergeom and chisq
@@ -61,36 +61,36 @@ return(res)
 }
 
 
-runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.step=0, show.cat1=FALSE, show.cat2=FALSE, show.cat3=FALSE)){
+runConCub <- function( obj, filter, nthreads=2, subset=NULL, verbose=list(output.step=0, show.cat1=FALSE, show.cat2=FALSE, show.cat3=FALSE)){
 
-	NCATS <- length(obj@fact)
-	nms_fact <- names(obj@fact)
+	NCATS <- length(obj@categories)
+	nms_categories <- names(obj@categories)
 	
 	# check if concub-filter object passed fits to concub object
-	if( (length(nms_fact) != length(filter@names)) || (intersect(nms_fact, filter@names) != nms_fact)  ){
-		warning("Names from concubfilter-object (", paste0(nms_fact, collapse=",") ,") and concub-object (", paste0(filter@names, collapse=","), ") do not match.")
+	if( (length(nms_categories) != length(filter@names)) || (intersect(nms_categories, filter@names) != nms_categories)  ){
+		warning("Names from concubfilter-object (", paste0(nms_categories, collapse=",") ,") and concub-object (", paste0(filter@names, collapse=","), ") do not match.")
 		return(obj)
 	}
 
 	N <- length(obj@population) #size of population
 	N_factor <- .getNumberOfFactorLevels(obj)
 
-	items_factor <- .getItemsInEachFactor(obj) # items of each categorie (list of lists)
-	opt_factor <- .getOptOfFactor(obj)
+	items_factor <- .getItemsInEachCategory(obj) # items of each categorie (list of lists)
+	opt_factor <- .getOptOfCategory(obj)
 	rng_factor <- vector('list', NCATS)
 
 
-	sub_factor <- .getNamesOfEachFactor(obj) # names of categories
-	if( !is.null(rng) ){ for(nm in names(rng)){sub_factor[[ nm ]] <- intersect(rng[[nm]], sub_factor[[ nm ]]); } } # use intersect to avoid incorp of variables that have been dropped because, e.g., they are empty
-	len_sub_factor <- sapply(sub_factor, length)
+	sub_categories <- .getNamesOfEachCategory(obj) # names of categories
+	if( !is.null(subset) ){ for(nm in names(subset)){sub_categories[[ nm ]] <- intersect(subset[[nm]], sub_categories[[ nm ]]); } } # use intersect to avoid incorp of variables that have been dropped because, e.g., they are empty
+	len_sub_categories <- sapply(sub_categories, length)
 
 
-	ttt <- .getTypeOf_transformTable(form=obj@null.model, nms=nms_fact)
+	ttt <- .getTypeOf_transformTable(form=obj@null.model, nms=nms_categories)
 	do.strat <- FALSE
 	if(NCATS==3){do.strat <- obj@options[[ 3 ]][['strat']]}
 	frm <- obj@null.model
 	if( do.strat == TRUE & ttt[[1]] == 'mi' ){
-		frm <- update(frm, as.formula(paste("~.-", names(obj@fact)[3])))
+		frm <- update(frm, as.formula(paste("~.-", names(obj@categories)[3])))
 	}
 	message(paste("Testing: counts ~ ", as.character(obj@null.model)[2], " (", ttt[[1]],")", sep=""), sep="")
 	if( any(sapply(opt_factor, function(x){return(x$grouping != "none")}) ) ){
@@ -100,14 +100,14 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 	####
 	## grouping of ordinal variables
 	## 
-	RNG <- setNames( vector("list", NCATS), nms_fact ) # stores the variable names for each category that should be taken together
+    RNG <- setNames( vector("list", NCATS), nms_categories ) # stores the variable names for each category that should be taken together
 	if( sum( sapply( opt_factor, function(x){ x[['grouping']] != 'none' } ) ) > 1 ){ warning("Grouping-option for multiple categories. Results might be hard to interprete.") }
-	for( g in nms_fact ){
-		RNG[[ g ]] <- list()
+	for( g in nms_categories ){
 		opt_grouping <- opt_factor[[g]][[ 'grouping' ]]
 		opt_width <- opt_factor[[g]][[ 'width' ]]
-		local_len <- len_sub_factor[g]
-		local_rng <- sub_factor[[g]]
+		local_len <- len_sub_categories[g]
+		local_rng <- sub_categories[[g]]
+		RNG[[ g ]] <- setNames( vector("list", local_len), local_rng )
 
 		for( g2 in 1:local_len ){
 			term <- local_rng[g2]
@@ -130,8 +130,8 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
  			RNG[[ g ]][[ term ]] <- term2cum
  		}
 
-		if( opt_grouping == 'cumf' ){ sub_factor[[g]] <- sub_factor[[g]][1:(local_len-1)] }
-		if( opt_grouping == 'cumr' ){ sub_factor[[g]] <- sub_factor[[g]][2:local_len] }
+		if( opt_grouping == 'cumf' ){ sub_categories[[g]] <- sub_categories[[g]][1:(local_len-1)] }
+		if( opt_grouping == 'cumr' ){ sub_categories[[g]] <- sub_categories[[g]][2:local_len] }
 	}
 	##
 	####
@@ -139,63 +139,71 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 	## prepare progress output for terminal
 	Len_term3 <- c();
 	if(NCATS == 3 && verbose$show.cat3){
-		L <- length(sub_factor[[3]])
-		Len_term3 <- setNames(vector("list", L), sub_factor[[3]]);
+		L <- length(sub_categories[[3]])
+		Len_term3 <- setNames(vector("list", L), sub_categories[[3]]);
 		for( l in 1:L ){
-			x <- ifelse( l==1, sub_factor[[3]][L], sub_factor[[3]][l-1] )
-			Len_term3[[l]] <- paste(paste(rep("\b", times=nchar(x)), collapse=""), "\t", sub_factor[[3]][l], collapse="", sep="")
+			x <- ifelse( l==1, sub_categories[[3]][L], sub_categories[[3]][l-1] )
+			Len_term3[[l]] <- paste(paste(rep("\b", times=nchar(x)), collapse=""), "\t", sub_categories[[3]][l], collapse="", sep="")
 		}
 	}
 	##
 
 	my_separator <- .my_separator()
-	tmp0_nms1 <- c(t(outer( sub_factor[[1]], sub_factor[[2]], paste, sep=my_separator )))
-	if(NCATS==3){tmp0_nms1 <- c( t(outer(tmp0_nms1, sub_factor[[3]], paste, sep=my_separator) ))}
-
+	tmp0_nms1 <- c(t(outer( sub_categories[[1]], sub_categories[[2]], paste, sep=my_separator )))
+	if(NCATS==3){tmp0_nms1 <- c( t(outer(tmp0_nms1, sub_categories[[3]], paste, sep=my_separator) ))}
+	
+	
 	
 	## pre-calc some sets
-	PreCalc__x_1_ <- lapply( 1:length(sub_factor[[ nms_fact[2] ]]), function(t){unlist(items_factor[[ nms_fact[2] ]][ RNG[[ nms_fact[2] ]][[ sub_factor[[ nms_fact[2] ]][ t ] ]] ])} )
-	PreCalc__x_2_ <- lapply( 1:length(sub_factor[[ nms_fact[2] ]]), function(t){setdiff(obj@population, PreCalc__x_1_[[t]])} )
+	tmp1 <- items_factor[[ nms_categories[2] ]]; 
+	tmp2 <- RNG[[ nms_categories[2] ]]
+ 	PreCalc__x_1_ <- setNames( vector("list", length(sub_categories[[ nms_categories[2] ]])), names( sub_categories[[ nms_categories[2] ]] ) )
+	for( t in as.integer(1:length(sub_categories[[ nms_categories[2] ]])) ){
+        PreCalc__x_1_[[t]] <- unique(.special1( tmp1, tmp2, t )) # 8-fold faster and 60-fold less memory, compared to version 1.1.10
+	}
 	PreCalc__x__1 <- PreCalc__x__2 <- list()
 	if( NCATS == 3 ){ 
-		loc_nm3 <- nms_fact[3]
-		PreCalc__x__1 <- lapply( 1:length(sub_factor[[ loc_nm3 ]]), function(t){unlist(items_factor[[ loc_nm3 ]][ RNG[[ loc_nm3 ]][[ sub_factor[[ loc_nm3 ]][ t ] ]] ])} )
-		PreCalc__x__2 <- lapply( 1:length(sub_factor[[ loc_nm3 ]]), function(t){setdiff(obj@population, PreCalc__x__1[[t]])} )
+		loc_nm3 <- nms_categories[3]
+        tmp1 <- items_factor[[ loc_nm3 ]]; 
+        tmp2 <- RNG[[ loc_nm3 ]]
+        PreCalc__x__1 <- setNames( vector("list", length(sub_categories[[ loc_nm3 ]])), names( sub_categories[[ loc_nm3 ]] ) )
+
+        for( t in as.integer(1:length(sub_categories[[ loc_nm3 ]])) ){
+            PreCalc__x__1[[t]] <- unique(.special1( tmp1, tmp2, t )) # how fast?
+        }
 	}
 	##
-
+	
 	ITER <- setNames(vector('list', length(tmp0_nms1)), tmp0_nms1)
-	gc()
-	loc_nm1 <- nms_fact[1]
-	for( g1 in 1:length(sub_factor[[ loc_nm1 ]]) ){
-		term1 <- sub_factor[[ loc_nm1 ]][ g1 ]; if(verbose$show.cat1){cat(term1, sep="")}
+	loc_nm1 <- nms_categories[1]
+	for( g1 in 1:length(sub_categories[[ loc_nm1 ]]) ){
+		term1 <- sub_categories[[ loc_nm1 ]][ g1 ]; if(verbose$show.cat1){cat(term1, sep="")}; notterm1 <- paste('not_', term1, sep="")
 
-		x1__ <- unlist(items_factor[[ loc_nm1 ]][ RNG[[ loc_nm1 ]][[ term1 ]] ])
-		x2__ <- setdiff( obj@population, x1__ )
+		x1__ <- unique( unlist(items_factor[[ loc_nm1 ]][ RNG[[ loc_nm1 ]][[ term1 ]] ], use.names=FALSE) )
+		x2__ <- setdiffPresort( obj@population, x1__ ) # already sorted
 
 		RES_CAT2 <- list()
-		loc_nm2 <- nms_fact[2]
-		for( g2 in 1:length(sub_factor[[ loc_nm2 ]]) ){
-			term2 <- sub_factor[[ loc_nm2 ]][ g2 ]; if(verbose$show.cat2){cat("\r\t", term2, "\t", sep="")}
+		loc_nm2 <- nms_categories[2]
+		for( g2 in 1:length(sub_categories[[ loc_nm2 ]]) ){
+			term2 <- sub_categories[[ loc_nm2 ]][ g2 ]; if(verbose$show.cat2){cat("\r\t", term2, "\t", sep="")}
 
 			x_1_ <- PreCalc__x_1_[[g2]]
-			x_2_ <- PreCalc__x_2_[[g2]]
+			x_2_ <- setdiffPresort(obj@population, PreCalc__x_1_[[g2]]) # already sorted; could be pre-calculted, but calculated again and again to avoid memory overflow
 
-			x1__Ix_1_ <- intersect( x1__, x_1_ )
-			x2__Ix_2_ <- intersect( x2__, x_2_ )
-			x1__Ix_2_ <- intersect( x1__, x_2_ )
-			x2__Ix_1_ <- intersect( x2__, x_1_ )
-
+			x1__Ix_1_ <- intersect( x1__, x_1_ );
+			x1__Ix_2_ <- intersectPresort( x_2_, x1__ );
+			x2__Ix_1_ <- intersectPresort( x2__, x_1_ );
+			x2__Ix_2_ <- setdiffPresort( obj@population, c( x1__Ix_1_, x1__Ix_2_, x2__Ix_1_ ) ) # already sorted
+            
 			RES_CAT3 <- list()
 			if(NCATS==2){
 				res <- list()
-				CT <- array(NA, dim=c(2,2), dimnames=list( factor1=c( term1, paste('not_', term1, sep="") ), factor2=c( term2, paste('not_', term2, sep="") ) ) )
-				names(dimnames(CT)) <- nms_fact
+                subpop <- as.character(( x1__Ix_1_)); len_subpop <- length(subpop)
+ 				CT <- array( c(len_subpop, vapply( list(x2__Ix_1_, x1__Ix_2_, x2__Ix_2_), length, FUN.VALUE=123 )), dim=c(2,2), dimnames=list( factor1=c( term1, notterm1 ), factor2=c( term2, paste('not_', term2, sep="") ) ) )
+				names(dimnames(CT)) <- nms_categories
 
-				CT <- .getContingencyTable( CT, x1__Ix_1_, x2__Ix_2_, x1__Ix_2_, x2__Ix_1_ )
-				subpop <- as.character(( x1__Ix_1_)); len_subpop <- length(subpop)
-
-				ExpectedValues <- getExpectedValues(CT)
+				
+				ExpectedValues <- hypergea::getExpectedValues(CT)
 
 				if( !( ( skip.zeroobs(filter) && len_subpop == 0 )
 					|| ( skip.min.obs(filter) >= len_subpop )
@@ -206,20 +214,20 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 				res <- c(res, list(subpop=subpop))
 				RES_CAT2[[ term2 ]] <- res
 			}
-			if(NCATS==3){
+			if(NCATS==3){ # ToDo: optimze for speed  etc
 				RES_CAT3 <- list()
 
-				loc_nm3 <- nms_fact[3]
-				for( g3 in 1:length(sub_factor[[ loc_nm3 ]]) ){
+				loc_nm3 <- nms_categories[3]
+				for( g3 in 1:length(sub_categories[[ loc_nm3 ]]) ){
 					res <- list()
-					term3 <- sub_factor[[ loc_nm3 ]][ g3 ]; if(verbose$show.cat3){message(Len_term3[[ term3 ]])}
+					term3 <- sub_categories[[ loc_nm3 ]][ g3 ]; if(verbose$show.cat3){message(Len_term3[[ term3 ]])}
 
 					x__1 <- PreCalc__x__1[[g3]]
-					x__2 <- PreCalc__x__2[[g3]]
+					x__2 <- setdiffPresort(obj@population, PreCalc__x__1[[g3]]) 
 					subpop <- as.character(intersect( x1__Ix_1_, x__1 )); len_subpop <- length(subpop)
 					
-					CT <- array(NA, dim=c(2,2,2), dimnames=list( factor1=c( term1, paste('not_', term1, sep="") ), factor2=c( term2, paste('not_', term2, sep="") ), factor3=c( term3, paste('not_', term3, sep="") ) ))
-					names(dimnames(CT)) <- nms_fact
+					CT <- array(NA, dim=c(2,2,2), dimnames=list( factor1=c( term1, notterm1 ), factor2=c( term2, paste('not_', term2, sep="") ), factor3=c( term3, paste('not_', term3, sep="") ) ))
+					names(dimnames(CT)) <- nms_categories
 					res <- list("estimate"=1, p.value=1, subpop=subpop)
 
 
@@ -251,11 +259,9 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
 			}
 			
 			if( verbose[['output.step']] > 0 && ( (g2 %% verbose[['output.step']] == 0) || (g2 == length(rng_factor[[2]])) ) ){
-				if(verbose$show.cat2){cat("\n\tpassed: category 2 (", nms_fact[2], "), variable ", term2, " (", g2, ")", sep="")}
+				if(verbose$show.cat2){cat("\n\tpassed: second category (", nms_categories[2], "), variable ", term2, " (", g2, ")", sep="")}
 				if(verbose$show.cat2){cat("\n")}
 			}
-			
-			if(g2%%10==0){gc()}
 
 		}  # END loop g2
 		tmp_nms2 <- names( RES_CAT2 )
@@ -266,8 +272,7 @@ runConCub <- function( obj, filter, nthreads=2, rng=NULL, verbose=list(output.st
  	} # END loop g1
  	cat("\n")
  	
-	#p <- sapply(ITER, is.null)
- 	obj@test.result <- ITER #[!p]
+ 	obj@test.result <- ITER
 
 return(obj)
 }
@@ -279,7 +284,7 @@ return(obj)
 ########################################################################################################################################
 ########################################################################################################################################
 
-.filter_drop.wrongdir.layer <- function(filter, NCATS, ODDSRATIO, PVAL, nms_fact){
+.filter_drop.wrongdir.layer <- function(filter, NCATS, ODDSRATIO, PVAL, nms_categories){
 	if( !(filter@test.direction %in% c("both", "two.sided")) ){
 
 		local__filter_drop.wrongdir.slice <- filter@drop.wrongdir.layer
@@ -289,7 +294,7 @@ return(obj)
 		if(local__filter_test.direction %in% c("less", "under")){ cond <- paste( "all( c(x) > 1, na.rm=TRUE )" ) }
 
 		for(d in 1:NCATS){
-			dn <- nms_fact[d]
+			dn <- nms_categories[d]
 			if( local__filter_drop.wrongdir.slice[dn] == TRUE ){
 				keep <- apply(ODDSRATIO, d, function(x){if( eval(parse(text=cond)) ){return(FALSE)}else{return(TRUE)} })
 				ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
@@ -301,11 +306,11 @@ return(obj)
 return(list(ODDSRATIO, PVAL))
 }
 
-.filter_drop.insignif.layer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_fact ){
+.filter_drop.insignif.layer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_categories ){
 	local__filter_drop.insignif.slice <- drop.insignif.layer(filter)
 	local__filter_p.value <- p.value(filter)
 	for(d in 1:NCATS){
-		dn <- nms_fact[d]
+		dn <- nms_categories[d]
 		if( local__filter_drop.insignif.slice[dn] == TRUE ){
 			keep <- apply(PVAL, d, function(x){if( all( x > local__filter_p.value, na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
 			ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
@@ -315,11 +320,11 @@ return(list(ODDSRATIO, PVAL))
 	}
 return(list(ODDSRATIO, PVAL))
 }
-.filter_drop.lowl2or.layer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_fact ){
+.filter_drop.lowl2or.layer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_categories ){
 	local__1 <- drop.lowl2or.layer(filter)
 	local__val <- minimum.l2or(filter)
 	for(d in 1:NCATS){
-		dn <- nms_fact[d]
+		dn <- nms_categories[d]
 		if( local__1[dn] == TRUE ){
 			keep <- apply(abs(log2(ODDSRATIO)), d, function(x){if( all( x < local__val, na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
 			ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
@@ -346,9 +351,9 @@ return(list(ODDSRATIO, PVAL))
 return(x)
 }
 
-.filter_dropLayer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_fact ){
+.filter_dropLayer <- function( filter, NCATS, ODDSRATIO, PVAL, nms_categories ){
 	for(d in 1:NCATS){
-		dn <- nms_fact[d]
+		dn <- nms_categories[d]
 		KEEP <- c()
 		if( drop.lowl2or.layer(filter)[dn] ){
 			keep <- apply(abs(log2(ODDSRATIO)), d, function(x){if( all( x < minimum.l2or(filter), na.rm=TRUE ) ){return(FALSE)}else{return(TRUE)} })
@@ -379,26 +384,24 @@ return(x)
 return( list(ODDSRATIO, PVAL) )
 }
 
-filterConCub <- function(obj, filter, p.adjust.method='none'){
-	NCATS <- length(obj@fact)
-	nms_fact <- names(obj@fact)
+filterConCub <- function(obj, filter, p.adjust.method='none', verbose=1){
+	NCATS <- length(obj@categories)
+	nms_categories <- names(obj@categories)
 
 	ResultTest <- obj@test.result
 
 	##############################################################
 	my_separator <- .my_separator()
 
-# 	checkValid_ResultTest <- sapply(ResultTest, function(x){is.null(x[['p.value']])})
-# 	all_lab <- names(checkValid_ResultTest[!checkValid_ResultTest])
 	all_lab <- names(ResultTest)
 
 	split_all_lab <- strsplit(all_lab, split=my_separator)
 	dmnms <- matrix(unlist(split_all_lab), nrow=length(split_all_lab), byrow=TRUE)
-	dmnms0 <- setNames(apply(dmnms, 2, unique), nms_fact)
+	dmnms0 <- setNames(apply(dmnms, 2, unique), nms_categories)
 
-	## guarantee correct order (stored in sub_factor)
-	sub_factor <- .getNamesOfEachFactor(obj)
-	for( i in 1:length( dmnms0 ) ){	dmnms0[[i]] <- intersect( sub_factor[[i]], dmnms0[[i]] ) }
+	## guarantee correct order (stored in sub_categories)
+	sub_categories <- .getNamesOfEachCategory(obj)
+	for( i in 1:length( dmnms0 ) ){	dmnms0[[i]] <- intersect( sub_categories[[i]], dmnms0[[i]] ) }
 
  	M <- array( NA, dim=c(unlist(sapply(dmnms0, length))), dimnames=dmnms0)
  	PVAL <- ODDSRATIO <- M
@@ -426,11 +429,8 @@ filterConCub <- function(obj, filter, p.adjust.method='none'){
 			}
 		}
  	}
-# 
-# 	PVAL[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'p.value' ]][1]})
-# 	ODDSRATIO[ dmnms ] <- sapply(all_lab, function(x){ResultTest[[x]][[ 'estimate' ]][1]})
-	rm(M)
-	rm(split_all_lab)
+
+ 	rm(M); rm(split_all_lab)
 
 	.checkValidOddsRatio <- function(x){
 		BOOL <- rep(FALSE, times=length(x))
@@ -444,42 +444,45 @@ filterConCub <- function(obj, filter, p.adjust.method='none'){
 	}
 	.printDim <- function(){ return( paste( paste(names(dimnames(ODDSRATIO)), dim(ODDSRATIO), sep="="), collapse=", ") ) }
 
-	message( "Dimension before filtering: ", .printDim(), sep="" )
+	if(verbose>0){ message( "Dimension before filtering: ", .printDim(), sep="" ) }
 
 	
-	###
-	### drop slices with zero/NaN/Inf-valued odds ratio
-	###
-# 	for(d in 1:NCATS){
-# 		keep <- apply(ODDSRATIO, d, function(x){ if( all(.checkValidOddsRatio(c(x))) ){return(FALSE)}else{return(TRUE)} })
-# 		ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
-# 		PVAL <- .keepLayer(PVAL, keep, NCATS, d)
-# 	}
-
-
-	###
-	### drop slices with wrong direction
-	###
-	tmp <- .filter_drop.wrongdir.layer( filter, NCATS, ODDSRATIO, PVAL, nms_fact )
-	if(is.null(tmp)){ return(obj) }
-	ODDSRATIO <- tmp[[1]]; PVAL <- tmp[[2]]
-
-	#message( "Dimension after direction filtering: ", .printDim(), "\n", sep="" )
-
 	###
 	### adjust p-values for multiple testing
 	###
 	if( !(p.adjust.method %in% p.adjust.methods) ){p.adjust.method <- 'none'}
 	PVAL <- array(p.adjust(PVAL, method=p.adjust.method), dim=dim(PVAL), dimnames=dimnames(PVAL))
 
+
+	###
+	### drop slices with wrong direction
+	###
+	tmp <- .filter_drop.wrongdir.layer( filter, NCATS, ODDSRATIO, PVAL, nms_categories )
+	if(is.null(tmp)){ return(obj) }
+	ODDSRATIO <- tmp[[1]]; PVAL <- tmp[[2]]
+	if(verbose>1){ message( "Dimension after filtering for direction: ", .printDim(), "\n", sep="" ) }
+
+    
 	###
 	### drop slices
 	###
-	tmp <- .filter_dropLayer( filter, NCATS, ODDSRATIO, PVAL, nms_fact )
+	tmp <- .filter_dropLayer( filter, NCATS, ODDSRATIO, PVAL, nms_categories )
 	if(is.null(tmp)){ return(obj) }
 	ODDSRATIO <- tmp[[1]]; PVAL <- tmp[[2]]
+    if(verbose>1){ message( "Dimension after filtering for P-value and low abs(log2(or)): ", .printDim(), "\n", sep="" ) }
 
-	message( "Dimension after filtering: ", .printDim(), sep="" )
+
+    ###
+	### drop slices with zero/NaN/Inf-valued odds ratio
+	###
+#     if(verbose>1){ message( "Removing uninformative layers\n", sep="" ) }
+# 	for(d in 1:NCATS){
+# 		keep <- apply(ODDSRATIO, d, function(x){ if( all(.checkValidOddsRatio(c(x))) ){return(FALSE)}else{return(TRUE)} })
+# 		ODDSRATIO <- .keepLayer(ODDSRATIO, keep, NCATS, d)
+# 		PVAL <- .keepLayer(PVAL, keep, NCATS, d)
+# 	}
+
+	if(verbose>0){ message( "Dimension after filtering: ", .printDim(), sep="" ) }
 	obj@test.result.filter <- list( odds.ratio=ODDSRATIO, p.value=PVAL )
 return(obj)
 }
@@ -487,10 +490,10 @@ return(obj)
 plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), args_heatmap.2=list(), col=list(range=NULL), alt.names=list(), t=FALSE){
 
 
-	NCATS <- length(obj@fact)
-	if(is.numeric(fix.cat)){fix.cat <- names(obj@fact)[ fix.cat ]}
+	NCATS <- length(obj@categories)
+	if(is.numeric(fix.cat)){fix.cat <- names(obj@categories)[ fix.cat ]}
 
-	nms_fact <- names(obj@fact)
+	nms_categories <- names(obj@categories)
 	N_factor <- .getNumberOfFactorLevels(obj)
 
 	ResultTest <- obj@test.result.filter
@@ -502,9 +505,9 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 	if( length(show) > 0 ){
 		arr.ind <- lapply(dimnames(ODDSRATIO_0), function(x){return(setNames(rep(FALSE, times=length(x)), x))} )
 		for( i in 1:NCATS ){
-			tmp <- show[[ nms_fact[i] ]]
+			tmp <- show[[ nms_categories[i] ]]
 			if( !is.null( tmp ) && length(tmp) > 0 ){
-				arr.ind2 <- arr.ind; arr.ind2[[ nms_fact[i] ]][ which( names(arr.ind[[ nms_fact[i] ]]) %in% tmp ) ] <- TRUE
+				arr.ind2 <- arr.ind; arr.ind2[[ nms_categories[i] ]][ which( names(arr.ind[[ nms_categories[i] ]]) %in% tmp ) ] <- TRUE
 				if( NCATS == 2 ){ ODDSRATIO_0 <- ODDSRATIO_0[arr.ind2[[1]], arr.ind2[[2]], drop=FALSE]; PVAL_0 <- PVAL_0[arr.ind2[[1]], arr.ind2[[2]], drop=FALSE] }
 				if( NCATS == 3 ){ ODDSRATIO_0 <- ODDSRATIO_0[arr.ind2[[1]], arr.ind2[[2]], arr.ind2[[3]], drop=FALSE]; PVAL_0 <- PVAL_0[arr.ind2[[1]], arr.ind2[[2]], arr.ind2[[3]], drop=FALSE] }
 			}
@@ -513,8 +516,8 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 	if( length(dontshow) > 0 ){
 		POS <- setNames(vector("list", NCATS), names(dimnames(ODDSRATIO_0)))
 		for( i in 1:NCATS ){
-			pos <- which( dimnames(ODDSRATIO_0)[[i]] %in% dontshow[[ nms_fact[i] ]] )
-			if( length(pos) > 0 ){ POS[[nms_fact[i]]] <- pos }else{ POS[[nms_fact[i]]] <- length(dimnames(ODDSRATIO_0)[[i]])+1 }
+			pos <- which( dimnames(ODDSRATIO_0)[[i]] %in% dontshow[[ nms_categories[i] ]] )
+			if( length(pos) > 0 ){ POS[[nms_categories[i]]] <- pos }else{ POS[[nms_categories[i]]] <- length(dimnames(ODDSRATIO_0)[[i]])+1 }
 		}
 		if( NCATS == 2 ){ ODDSRATIO_0 <- ODDSRATIO_0[-POS[[1]], -POS[[2]], drop=FALSE]; PVAL_0 <- PVAL_0[-POS[[1]], -POS[[2]], drop=FALSE] }
 		if( NCATS == 3 ){ ODDSRATIO_0 <- ODDSRATIO_0[-POS[[1]], -POS[[2]], -POS[[3]], drop=FALSE]; PVAL_0 <- PVAL_0[-POS[[1]], -POS[[2]], -POS[[3]], drop=FALSE] }
@@ -524,31 +527,30 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 	tmp <- log2(ODDSRATIO_0); tmp[which( is.nan(tmp) | tmp == -Inf | tmp == Inf | is.na(tmp) )] <- 0
 	if( is.null(col$range) ){ COL_RANGE <- range( c(tmp), na.rm=TRUE ); COL_RANGE <- c( -max(abs(COL_RANGE)), +max(abs(COL_RANGE)) ); }
 	COL_LEVELS <- seq( COL_RANGE[1], COL_RANGE[2], length.out=1000 )
-	COLORS <- c(colorpanel(floor(length(c(COL_LEVELS))/2), low='violet', mid='blue', high='white'), colorpanel(ceiling(length(COL_LEVELS)/2), low='white', mid='orange', high='red'))
+	COLORS <- c(colorpanel(floor(length(c(COL_LEVELS))/2), low='violet', mid='blue', high='white'), gplots::colorpanel(ceiling(length(COL_LEVELS)/2), low='white', mid='orange', high='red'))
 
 	CollectPlots <- list()
-	for( cnt in 1:length(obj@fact[[fix.cat]]) ){
+	for( cnt in 1:length(obj@categories[[fix.cat]]) ){
 
 		if(NCATS==2){
 			ODDSRATIO_1 <- ODDSRATIO_0;PVAL_1 <- PVAL_0
 		}
 		if(NCATS==3){
-			FixCounter <- names(obj@fact[[fix.cat]])[cnt]
+			FixCounter <- names(obj@categories[[fix.cat]])[cnt]
 
 			if( !(FixCounter %in% dimnames(ODDSRATIO_0)[[fix.cat]]) && !(FixCounter %in% names(alt.names[[fix.cat]]))){ #continue in case that current factor level was in 'dontshow'
 				next;
 			}
 			ODDSRATIO_1 <- ODDSRATIO_0[FixCounter, , ];PVAL_1 <- PVAL_0[FixCounter, , ]
-			if( fix.cat==nms_fact[2] ){ODDSRATIO_1 <- ODDSRATIO_0[, FixCounter, ]; PAVL_1 <- PVAL_0[, FixCounter, ]};
-			if( fix.cat==nms_fact[3] ){ODDSRATIO_1 <- ODDSRATIO_0[, , FixCounter]; PAVL_1 <- PVAL_0[, , FixCounter]};
+			if( fix.cat==nms_categories[2] ){ODDSRATIO_1 <- ODDSRATIO_0[, FixCounter, ]; PAVL_1 <- PVAL_0[, FixCounter, ]};
+			if( fix.cat==nms_categories[3] ){ODDSRATIO_1 <- ODDSRATIO_0[, , FixCounter]; PAVL_1 <- PVAL_0[, , FixCounter]};
 		}
-
 		# don't show NA-rows and NA-cols; they are not removed by 'filter'-method when dontshow-option is used
 		if( !obj@keep.empty.vars[[ names(dimnames(ODDSRATIO_1))[1] ]] ){
-			keep <- apply( ODDSRATIO_1, 1, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[keep, ]; PVAL_1 <- PVAL_1[keep, ]
+			keep <- apply( ODDSRATIO_1, 1, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[keep, , drop=FALSE]; PVAL_1 <- PVAL_1[keep, ,drop=FALSE]
 		}
 		if( !obj@keep.empty.vars[[ names(dimnames(ODDSRATIO_1))[2] ]] ){
-			keep <- apply( ODDSRATIO_1, 2, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[, keep]; PVAL_1 <- PVAL_1[, keep]
+			keep <- apply( ODDSRATIO_1, 2, function(x){ !all(is.na(x)) } ); ODDSRATIO_1 <- ODDSRATIO_1[, keep, drop=FALSE]; PVAL_1 <- PVAL_1[, keep, drop=FALSE]
 		}
 		tmp <- .filter_dropLayer( filter, 2, ODDSRATIO_1, PVAL_1, names(dimnames(ODDSRATIO_1)) )
 		ODDSRATIO_1 <- tmp[[1]]; PVAL_1 <- tmp[[2]]
@@ -556,7 +558,7 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 
 		if( length(alt.names) > 0 ){
 			for( i in 1:length(alt.names) ){
-				if( is.null(alt.names[[i]]) || !(names(alt.names)[i] %in% nms_fact) ){next;}
+				if( is.null(alt.names[[i]]) || !(names(alt.names)[i] %in% nms_categories) ){next;}
 				ODDSRATIO_1 <- .translate(ODDSRATIO_1, margin=names(alt.names)[i], translation=alt.names[[i]])
 				PVAL_1 <- .translate(PVAL_1, margin=names(alt.names)[i], translation=alt.names[[i]])
 			}
@@ -587,16 +589,18 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 		sdf2 <- setdiff(names(my_args_heatmap.2), names(args_heatmap.2))
 		local_args_heatmap.2 <- c(args_heatmap.2, my_args_heatmap.2[sdf2])
 
-		hm2 <- do.call("heatmap.2", local_args_heatmap.2)
-		lab <- paste(fix.cat, names(obj@fact[[fix.cat]])[cnt], sep=", ")
-		title(main=ifelse(NCATS==3, paste(fix.cat, names(obj@fact[[fix.cat]])[cnt], sep=", "), ""))
+
+		lab <- paste(fix.cat, names(obj@categories[[fix.cat]])[cnt], sep=", ")
+		hm2 <- try({
+		do.call("heatmap.2", local_args_heatmap.2)
+		title(main=ifelse(NCATS==3, paste(fix.cat, names(obj@categories[[fix.cat]])[cnt], sep=", "), ""))
+		})
 		CollectPlots[[ lab ]] <- list(heat=hm2, p.value=PVAL_1, log2.odds.ratio=ODDSRATIO_2)
 		
 		if(NCATS==2){break;}
 	}
 
 	obj@test.result.filter.heatmap <- CollectPlots
-	
 
 invisible(obj)
 }

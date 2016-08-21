@@ -8,7 +8,7 @@ Filter results from two- or three-way tests
 Performs filtering on results from two- or three-way tests
 }
 \usage{
-filterConCub(obj, filter, p.adjust.method = "none")
+filterConCub(obj, filter, p.adjust.method = "none", verbose=1)
 }
 \arguments{
   \item{obj}{
@@ -20,6 +20,9 @@ filterConCub(obj, filter, p.adjust.method = "none")
   \item{p.adjust.method}{
 set adjustment-method for p-values. Must match any of \code{\link{p.adjust.methods}}.
 }
+  \item{verbose}{An integer specifying the level of verbosity.
+}
+
 }
 
 

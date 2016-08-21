@@ -134,13 +134,14 @@ setMethod(f="initialize"
 
 
 setMethod("show", "concubfilter", function(object){
-	.pasteNamedVector <- function(x){ paste( attr(x, "names"), x, sep="=", collapse="," ) }
-	.printsepline <- function(){ cat(paste( rep("#", times=20), collapse="" ), "\n", sep="") }
+	.pasteNamedVector <- function(x){ paste( attr(x, "names"), x, sep="=", collapse=", " ) }
+	.printsepline <- function(len=20){ cat(paste( rep("#", times=len), collapse="" ), "\n", sep="") }
 
 	cat("\n", sep="")
-	.printsepline()
- 	cat("# ", "current filter settings", "\n", sep="")
-	.printsepline()
+	aux <- "#  current filter settings #"
+	.printsepline(nchar(aux))
+ 	cat(aux, "\n", sep="")
+	.printsepline(nchar(aux))
 	cat( "Number of categories: ", object@nfact, "\n", sep="" )
 	cat( "Maximum P-value: ", object@p.value, "\n", sep="" )
 	cat( "Minimum absolute log2 odds ratio: ", object@minimum.l2or, "\n", sep="" )

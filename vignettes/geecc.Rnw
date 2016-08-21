@@ -149,7 +149,7 @@ In this worked example we perform a simple GO enrichment analysis for differenti
 CCF.obj <- new("concubfilter", names=names(CatList)[1:2], p.value=0.5, 
   test.direction="two.sided", skip.min.obs=2)
 ## create a ConCub-object
-CC.obj <- new("concub", fact=CatList[1:2], population=rownames(marioni), 
+CC.obj <- new("concub", categories=CatList[1:2], population=rownames(marioni), 
   approx=5, null.model=~deg+go)
 @
 
@@ -159,7 +159,7 @@ In the third step we run the test and apply some additional filtering on the out
 In this example we consider only the first $400$ GO terms.
 <<workflow_step3, eval=TRUE, echo=FALSE, results=hide>>=
 gorange <- names(category2)[1:400]
-CC.obj2 <- runConCub( obj=CC.obj, filter=CCF.obj, nthreads=2, rng=list(go=gorange) )
+CC.obj2 <- runConCub( obj=CC.obj, filter=CCF.obj, nthreads=2, subset=list(go=gorange) )
 @
 <<workflow_step3a, eval=TRUE, echo=TRUE>>=
 ## check current filter settings and change some filters
@@ -224,11 +224,11 @@ We confine ourselves to the results from the worked example to test for mutual i
 <<example3dmi, eval=TRUE, echo=TRUE, results=hide>>=
 CCF.obj.3wmi <- new("concubfilter", names=names(CatList), p.value=0.5, 
   test.direction="two.sided", skip.min.obs=2)
-CC.obj.3wmi <- new("concub", fact=CatList, population=rownames(marioni), 
+CC.obj.3wmi <- new("concub", categories=CatList, population=rownames(marioni), 
   null.model=~deg+go+len)
 gorange <- as.character(unique(res2w$go))
 CC.obj2.3wmi <- runConCub( obj=CC.obj.3wmi, filter=CCF.obj.3wmi, 
-  nthreads=4, rng=list(go=gorange) )
+  nthreads=4, subset=list(go=gorange) )
 drop.insignif.layer(CCF.obj.3wmi) <- setNames(c(FALSE, TRUE, FALSE), names(CatList))
 p.value(CCF.obj.3wmi) <- 0.01
 CC.obj3.3wmi <- filterConCub( obj=CC.obj2.3wmi, filter=CCF.obj.3wmi, 
@@ -265,11 +265,11 @@ Testing for mutual independence of all three categories gives a first idea, but 
 <<example3wsp1, eval=TRUE, echo=TRUE, results=hide>>=
 CCF.obj.3wsp1 <- new("concubfilter", names=names(CatList), p.value=0.5, 
   test.direction="two.sided", skip.min.obs=2)
-CC.obj.3wsp1 <- new("concub", fact=CatList, population=rownames(marioni), 
+CC.obj.3wsp1 <- new("concub", categories=CatList, population=rownames(marioni), 
   null.model=~deg+go*len)
 gorange <- as.character(unique(res3wmi$go))
 CC.obj2.3wsp1 <- runConCub( obj=CC.obj.3wsp1, filter=CCF.obj.3wsp1, nthreads=2, 
-  rng=list(go=gorange) )
+  subset=list(go=gorange) )
 drop.insignif.layer(CCF.obj.3wsp1) <- setNames(c(FALSE, TRUE, FALSE), names(CatList))
 p.value(CCF.obj.3wsp1) <- 0.05
 CC.obj3.3wsp1 <- filterConCub( obj=CC.obj2.3wsp1, filter=CCF.obj.3wsp1, 
@@ -312,11 +312,11 @@ Finally, we test for the last null-model in the hierarchy of log-linear models. 
 <<example3wnti, eval=TRUE, echo=TRUE, results=hide>>=
 CCF.obj.3wnti <- new("concubfilter", names=names(CatList), p.value=0.5, 
   test.direction="two.sided", skip.min.obs=2)
-CC.obj.3wnti <- new("concub", fact=CatList, population=rownames(marioni),
+CC.obj.3wnti <- new("concub", categories=CatList, population=rownames(marioni),
   null.model=~len*go+deg*go+deg*len)
 gorange <- as.character(unique(res3wmi$go))
 CC.obj2.3wnti <- runConCub( obj=CC.obj.3wnti, filter=CCF.obj.3wnti, 
-  nthreads=4, rng=list(go=gorange) )
+  nthreads=4, subset=list(go=gorange) )
 CC.obj3.3wnti <- filterConCub( obj=CC.obj2.3wnti, filter=CCF.obj.3wnti, 
   p.adjust.method="BH")
 @

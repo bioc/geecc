@@ -8,7 +8,7 @@
 		return(loadedList)
 	}
 	if( length(grep( class(dbase), pattern="bimap", ignore.case=TRUE )) > 0 ){ # dbase is Bimap
-			if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning empty list.")); return(list()) }
+			if(!requireNamespace("AnnotationDbi")){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning empty list.")); return(list()) }
 			loadedList <- AnnotationDbi::as.list(dbase)
 			return(loadedList)
 	}
@@ -21,8 +21,8 @@ GO2list <- function(dbase, go.cat=NULL, rm=NULL, keep=NULL){
 	loadedList <- .getLoadedList(dbase, call=deparse(substitute(dbase)))
 
 	if(!is.null(go.cat)){ #remove GO categories
-		if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning empty list.")); return(list()) }
-		my_keep <- unlist(sapply(names(loadedList), function( l ){ ifelse( ( Ontology( l ) %in% toupper(go.cat) ), TRUE, FALSE) }))
+		if(!requireNamespace("GO.db")){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning empty list.")); return(list()) }
+		my_keep <- vapply(names(loadedList), function( l ){ ifelse( ( Ontology( l ) %in% go.cat ), TRUE, FALSE) }, FUN.VALUE=TRUE )
 		loadedList <- loadedList[ my_keep ]
 	}
 	if(!is.null(rm)){ #remove GO terms
@@ -57,8 +57,8 @@ get_gochildren <- function(nms){
 
 GO2offspring <- function(x){
 	if(!is.list(x)){ warning(paste0("Parameter ", sQuote("x"), " must be a list. Returning input unmodified.")); return(x) }
-	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
-	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	if(!requireNamespace("GO.db")){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	if(!requireNamespace("AnnotationDbi")){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
 	
 	R <- 1:length(x)
 	nms <- names(x)
@@ -78,8 +78,8 @@ GO2level <- function(x, go.level=-1, relation=c("is_a")){
 	if( !is.numeric(go.level) ){ warning(paste0(dQuote('go.level'), " needs to be ", sQuote("-1"), " or positive integer. Returning input list unmodified.")); return(x); }
 	if( go.level==-1 || go.level==0 ){ return(x) }
 	
-	if(!require(GO.db)){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
-	if(!require(AnnotationDbi)){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	if(!requireNamespace("GO.db")){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning input list unmodified.")); return(x) }
+	if(!requireNamespace("AnnotationDbi")){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
 
 	
 	u <- unlist(Term(GOTERM))
@@ -119,6 +119,17 @@ return(xx)
 }
 
 
+
+sortAscii <- function(x){
+    tmp <- Sys.getlocale("LC_COLLATE"); tmp2 <- Sys.setlocale("LC_COLLATE", "C"); x <- sort(x); tmp2 <- Sys.setlocale("LC_COLLATE", tmp);
+return(x)
+}
+intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
+setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
+.special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
+
+
+
 .translate <- function(x, margin=2, translation=NULL){
 	if(is.null(translation)){return(x)}
  	dimnames(x)[[margin]] <- translation[dimnames(x)[[margin]]]
@@ -150,9 +161,9 @@ return(TRUE)
 ## (X, Y, Z) =^= X+Y+Z			-- strsplit('+').len == 3
 
 ## single pairwise, joint independence		-- strsplit('+').len == 4
-## (X, (YZ)) =^= X+Y+Z+Y*Z == X+Y+Z+Y:Z
-## (Y, (XZ)) =^= X+Y+Z+X*Z == X+Y+Z+X:Z
-## (Z, (XY)) =^= X+Y+Z+X*Y == X+Y+Z+X:Y
+## (X, (YZ)) =^= X+Y+Z+Y*Z == X+Y+Z+Y:Z == X+Y*Z
+## (Y, (XZ)) =^= X+Y+Z+X*Z == X+Y+Z+X:Z == Y+X*Z
+## (Z, (XY)) =^= X+Y+Z+X*Y == X+Y+Z+X:Y == Z+X*Y
 
 ## two pairwise, conditional independence		-- strsplit('+').len == 5
 ## ((YX), (ZX)) =^= X+Y+Z+X*Y+X*Z == X+Y+Z+X:Y+X:Z	Y independent from Z given X

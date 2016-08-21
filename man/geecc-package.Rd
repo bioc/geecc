@@ -38,7 +38,7 @@ category3 <- split( ID, f=factor(LEN, levels=seq(100, 1000, 100)) )
 CatList <- list(deg=category1, go=category2, len=category3)
 
 ConCubFilter.obj <- new("concubfilter", names=names(CatList))
-ConCub.obj <- new("concub", fact=CatList)
+ConCub.obj <- new("concub", categories=CatList)
 ConCub.obj.2 <- runConCub( obj=ConCub.obj, filter=ConCubFilter.obj, nthreads=1 )
 ConCub.obj.3 <- filterConCub( obj=ConCub.obj.2, filter=ConCubFilter.obj )
 plotConCub( obj=ConCub.obj.3, filter=ConCubFilter.obj )

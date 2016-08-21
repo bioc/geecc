@@ -1,18 +1,22 @@
+useDynLib("geecc",  .registration=TRUE, .fixes="C_")
 import(methods)
-import(MASS, gplots, hypergea)
+import(MASS, gplots, hypergea, Rcpp)
 export("runConCub", "filterConCub", "plotConCub", "GO2list", "KEGG2list", "GO2level", "GO2offspring", "pval2star")
+export("intersectPresort", "setdiffPresort", "sortAscii")
 exportClasses("concub", "concubfilter")
 exportMethods("show", "initialize", "getTable")
 export(p.value, "p.value<-"
-, minimum.l2or, "minimum.l2or<-"
-, test.direction, "test.direction<-"
+		, minimum.l2or, "minimum.l2or<-"
+		, test.direction, "test.direction<-"
 
-, skip.zeroobs, "skip.zeroobs<-"
-, skip.min.obs, "skip.min.obs<-"
-, skip.min.group, "skip.min.group<-"
+		, skip.zeroobs, "skip.zeroobs<-"
+		, skip.min.obs, "skip.min.obs<-"
+		, skip.min.group, "skip.min.group<-"
 
-, drop.insignif.layer, "drop.insignif.layer<-"
-, drop.wrongdir.layer, "drop.wrongdir.layer<-"
-, drop.lowl2or.layer, "drop.lowl2or.layer<-"
-
-)
+		, drop.insignif.layer, "drop.insignif.layer<-"
+		, drop.wrongdir.layer, "drop.wrongdir.layer<-"
+		, drop.lowl2or.layer, "drop.lowl2or.layer<-"
+	)
+importFrom("graphics", "title")
+importFrom("stats", "as.formula", "ftable", "p.adjust", "p.adjust.methods", "update", "setNames")
+importFrom("utils", "head")

@@ -2,7 +2,7 @@
 
 setClass( "concub",
 	representation(
-		fact="list", population="character", keep.empty.vars="list", options="list"
+		categories="list", population="character", keep.empty.vars="list", options="list"
 		, approx="numeric", null.model="formula"
 		, test.result="list", test.result.filter="list", test.result.filter.heatmap="list"
 	)
@@ -10,58 +10,71 @@ setClass( "concub",
 
 
 setMethod("initialize", signature="concub"
-	, definition=function(.Object, fact, population, keep.empty.vars, options, approx, null.model){
+	, definition=function(.Object, categories, population, keep.empty.vars, options, approx, null.model){
 
 	test_result <- list()
 	MAX_NUM_FACT_SUPPORT <- 3
-	len_fact <- 0
-	nms_fact <- ""
+	num_categories <- 0
+	nms_categories <- ""
 
-	if( missing(fact) ){ stop("List of categories (paramater ", sQuote("fact"), ") required.") }
+	if( missing(categories) ){ stop("List of categories (parameter ", sQuote("categories"), ") required.") }
 	else{
-		len_fact <- length(fact)
-		if( len_fact > MAX_NUM_FACT_SUPPORT ){ warning("Only two or three categories are supported"); len_fact <- MAX_NUM_FACT_SUPPORT; }
-		nms_fact <- names(fact);
-		if( is.null(nms_fact) ){
-			nms_fact <- paste0( "factor", 1:min(len_fact, MAX_NUM_FACT_SUPPORT) ); names(fact) <- nms_fact
+		num_categories <- length(categories)
+		if( num_categories > MAX_NUM_FACT_SUPPORT ){ warning("Only two or three categories are supported"); num_categories <- MAX_NUM_FACT_SUPPORT; }
+		nms_categories <- names(categories);
+		if( is.null(nms_categories) ){
+			nms_categories <- paste0( "category", 1:min(num_categories, MAX_NUM_FACT_SUPPORT) ); names(categories) <- nms_categories
+			message(paste0("Changed names of categories: ", paste(nms_categories, collapse=",")))
 		}
-		.Object@fact <- fact
+		.Object@categories <- categories
 	}
 	
-	tmp <- setNames( vector("list", len_fact), nms_fact ); tmp <- lapply(tmp, function(x){FALSE})
+	tmp <- setNames( vector("list", num_categories), nms_categories ); tmp <- lapply(tmp, function(x){FALSE})
 	if(missing(keep.empty.vars)){
 		keep.empty.vars <- tmp 
 	}else{
-		keep.empty.vars[ setdiff( names(tmp), names(keep.empty.vars) ) ] <- FALSE
+		keep.empty.vars[ setdiff( nms_categories, names(keep.empty.vars) ) ] <- FALSE
 	}
 	.Object@keep.empty.vars <- keep.empty.vars
-
-
+	
 	if(missing(population)){
-		population <- unique(unlist( sapply( fact, function(x){ unique(unlist(x)) } ) ))
+        population <- sortAscii(unique(unlist( sapply( categories, function(x){ unique(unlist(x, use.names=FALSE)) } ), use.names=FALSE )));
 	}else{
 		if(is.character(population)){
-			fact <- lapply( fact, function(x1){ lapply( x1, function( x ){ isct <- intersect( x, population ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
-			for( i in 1:length(fact) ){
-				ii <- names(fact)[i]
+            population <- sortAscii(unique(population));
+			categories <- lapply( categories, function(x1){ lapply( x1, function( x ){ isct <- intersectPresort( population, x ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
+			for( i in 1:num_categories ){
+				ii <- nms_categories[i]
 				# if declared and FALSE, then remove
 				if( !keep.empty.vars[[ ii ]] ){
-					fact[[ ii ]] <- fact[[ ii ]][ !sapply( fact[[ ii ]], is.null) ]
+					categories[[ ii ]] <- categories[[ ii ]][ !sapply( categories[[ ii ]], is.null) ]
 				} #otherwise keep everything
 			}
-			.Object@fact <- fact
+			.Object@categories <- categories
 		}else{
 			if( class(population) %in% c("eSet", "ExpressionSet", "DGEList") ){ 
 				cls <- class(population)
-				population <- rownames(population)
+				population <- sortAscii( unique(rownames(population) ));
 				if( cls == "eSet" ){ population <- population[ grep(population, pattern="^AFFX", invert=TRUE) ] }
 			}
 		}
 	}
 	.Object@population <- population
+	
+	
+	# change order of categories for speed-up during computations
+	# categories like GO-terms typically contain thousands of factor-levels, other ones like phylostrata 10-20
+	tmp <- order( sapply( categories, length ), decreasing=FALSE );
+	categories <- categories[ tmp ]
+	if( num_categories==MAX_NUM_FACT_SUPPORT ){ categories <- categories[ c(1,3,2) ] } # swap
+    if( any( names(categories) != names(.Object@categories) ) ){
+        nms_categories <- names(categories)
+        message("Changed order of categories: ", paste(nms_categories, collapse=","))
+        .Object@categories <- categories 
+    }
 
 
-	if( missing(null.model) ){ null.model <- as.formula( paste("~", paste(nms_fact, collapse="+")) )
+	if( missing(null.model) ){ null.model <- as.formula( paste("~", paste(nms_categories, collapse="+")) )
 	}else{
 		bool <- .checkFormula(null.model) # stop if invalid formula
 		if( !bool ){return(NULL)}
@@ -70,10 +83,10 @@ setMethod("initialize", signature="concub"
  	if( !missing(approx) ){ .Object@approx <- max(c(approx, 0)) }else{ .Object@approx <- 0 }
 
 	default_factor_opt <- list( grouping=c("none", 'cumf', 'cumr', 'sw')[1], width=1, strat=FALSE )
-	my_opt <- setNames(vector("list", len_fact), nms_fact)
+	my_opt <- setNames(vector("list", num_categories), nms_categories)
 	if( !missing(options) ){ #set grouping options for sets
-		for( i in seq_len(len_fact) ){
-			ii <- nms_fact[i]
+		for( i in seq_len(num_categories) ){
+			ii <- nms_categories[i]
 			my_opt[[ ii ]] <- default_factor_opt
 			for( nm in intersect(names(default_factor_opt), names(options[[ ii ]])) ){ my_opt[[ ii ]][[nm]] <- options[[ ii ]][[nm]] }
 		}
@@ -98,12 +111,12 @@ setMethod("show", "concub", function(object){
  	cat("# ", "settings", "\n", sep="")
 	.printsepline()
 
-	satmod <- paste0( "count ~ ", paste0(names(object@fact), collapse="*") )
+	satmod <- paste0( "count ~ ", paste0(names(object@categories), collapse="*") )
 	cat("Comparing null-model '", paste0("count ~ ", as.character(object@null.model)[2]), "' against alternative model '", satmod, "' \n", sep="")
 	cat("Using chi-squared approximation"); if(object@approx>0){ cat(" unless expected value greater than ", object@approx, "\n", sep="") }
 	cat("\n\n")
 
-	x <- object@fact
+	x <- object@categories
 	for( i in seq_along(x) ){
 		Lxi <- length(x[[i]])
 		cat("Category ", i, " (", names(x)[i], ") with ", Lxi, " variables\n", sep="")
@@ -139,8 +152,8 @@ setMethod(f="getTable", signature="concub",
 
 		if(is.null(object) || length(object@test.result.filter) == 0){ warning("Empty list in concub-object."); return(NULL); }
 
-		items_factor <- .getItemsInEachFactor(object)
-		len_sub_factor <- lapply(items_factor, function(x){sapply(x, length)})
+		items_categories <- .getItemsInEachCategory(object)
+		len_sub_categories <- lapply(items_categories, function(x){sapply(x, length)})
 
 		or <- object@test.result.filter[['odds.ratio']]
 		pval <- object@test.result.filter[['p.value']]
@@ -155,8 +168,8 @@ setMethod(f="getTable", signature="concub",
 		labs1 <- apply(labs0, 1, paste, collapse=my_separator)
 		tab2 <- matrix(NA, nrow=length(labs1), ncol=length(cl), dimnames=list(labs1, cl))
 		tab2 <- as.data.frame(tab2)
-		n <- expand.grid(len_sub_factor);
-		rownames(n) <- apply(expand.grid(lapply(object@fact, names)), 1, paste, collapse=my_separator)
+		n <- expand.grid(len_sub_categories);
+		rownames(n) <- apply(expand.grid(lapply(object@categories, names)), 1, paste, collapse=my_separator)
 		colnames(n) <- n.cat
 		tab2[labs1, cat.names] <- labs0
 		tab2[labs1, n.cat] <- n[labs1, ]
