@@ -1,6 +1,7 @@
 useDynLib("geecc",  .registration=TRUE, .fixes="C_")
+importFrom(Rcpp, evalCpp)
 import(methods)
-import(MASS, gplots, hypergea, Rcpp)
+import(MASS, gplots, hypergea)
 export("runConCub", "filterConCub", "plotConCub", "GO2list", "KEGG2list", "GO2level", "GO2offspring", "pval2star")
 export("intersectPresort", "setdiffPresort", "sortAscii")
 exportClasses("concub", "concubfilter")

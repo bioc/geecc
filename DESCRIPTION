@@ -1,13 +1,14 @@
 Package: geecc
 Type: Package
 Title: Gene Set Enrichment Analysis Extended to Contingency Cubes
-Version: 1.7.1
-Date: 2016-08-21
+Version: 1.7.2
+Date: 2016-08-24
 Author: Markus Boenn
 Maintainer: Markus Boenn <markus.boenn@ufz.de>
 Description: Use log-linear models to perform hypergeometric and chi-squared tests for gene set enrichments for two (based on contingency tables) or three categories (contingency cubes). Categories can be differentially expressed genes, GO terms, sequence length, GC content, chromosomal position, phylostrata, divergence-strata, ....
 License: GPL (>= 2)
 Depends: R (>= 3.0.0), methods
-Imports: MASS, hypergea (>= 1.3.0), gplots, Rcpp
+Imports: MASS, hypergea (>= 1.3.0), gplots, Rcpp (>= 0.12.6)
+LinkingTo: Rcpp
 Suggests: hgu133plus2.db, GO.db, AnnotationDbi
 biocViews: BiologicalQuestion, GeneSetEnrichment, WorkflowStep, GO, StatisticalMethod, GeneExpression, Transcription, RNASeq, Microarray
