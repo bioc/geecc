@@ -32,6 +32,10 @@ runConCub(obj, filter, nthreads = 2, subset = NULL,
 	This function applies a test for association for all combinations of all variables of all categories to be tested. Depending on the settings in the concubfilter-object, a one-sided or two-sided test is made, using the exact hypergeometric test as implemented in the hypergea-package if the smallest expected value is smaller than 5, or using the chi-squared test as implemented in the loglm-function implemented in the MASS-package. The minimum expected value can be changed in the concub-object by the user (\code{approx}-parameter).
 	In this function only filter-settings those filter settings are used, which skip the tests.
 }
+
+\value{An object with class concub.}
+
+
 \examples{
 ##
 ## a completely artificial example run

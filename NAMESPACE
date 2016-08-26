@@ -1,4 +1,4 @@
-useDynLib("geecc",  .registration=TRUE, .fixes="C_")
+useDynLib(geecc)
 importFrom(Rcpp, evalCpp)
 import(methods)
 import(MASS, gplots, hypergea)

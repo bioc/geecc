@@ -26,6 +26,9 @@ A named list. The names are the names of the categories. Each item is a characte
   \item{alt.names}{ Substitute variables by alternative terms. For instance, if variables are artificial ids, they can be substituted by descriptive text for the heatmap. }
  \item{t}{ logical; transpose matrix for heatmap. Default \code{FALSE}. }
 }
+
+\value{An object with class concub.}
+
 \examples{
 ##
 ## a completely artificial example run
