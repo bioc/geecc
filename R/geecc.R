@@ -158,19 +158,22 @@ runConCub <- function( obj, filter, nthreads=2, subset=NULL, verbose=list(output
 	tmp1 <- items_factor[[ nms_categories[2] ]]; 
 	tmp2 <- RNG[[ nms_categories[2] ]]
  	PreCalc__x_1_ <- setNames( vector("list", length(sub_categories[[ nms_categories[2] ]])), names( sub_categories[[ nms_categories[2] ]] ) )
-	for( t in as.integer(1:length(sub_categories[[ nms_categories[2] ]])) ){
-        PreCalc__x_1_[[t]] <- unique(.special1( tmp1, tmp2, t )) # 8-fold faster and 60-fold less memory, compared to version 1.1.10
-	}
+ 	PreCalc__x_1_ <- lapply( 1:length(sub_categories[[ nms_categories[2] ]]), function(t){unlist(items_factor[[ nms_categories[2] ]][ RNG[[ nms_categories[2] ]][[ sub_categories[[ nms_categories[2] ]][ t ] ]] ])} )
+# 	for( t in as.integer(1:length(sub_categories[[ nms_categories[2] ]])) ){
+#         PreCalc__x_1_[[t]] <- unique(.special1( tmp1, tmp2, t )) # 8-fold faster and 60-fold less memory, compared to version 1.1.10
+# 	}
 	PreCalc__x__1 <- PreCalc__x__2 <- list()
 	if( NCATS == 3 ){ 
 		loc_nm3 <- nms_categories[3]
         tmp1 <- items_factor[[ loc_nm3 ]]; 
         tmp2 <- RNG[[ loc_nm3 ]]
         PreCalc__x__1 <- setNames( vector("list", length(sub_categories[[ loc_nm3 ]])), names( sub_categories[[ loc_nm3 ]] ) )
+		loc_nm3 <- nms_categories[3]
+		PreCalc__x__1 <- lapply( 1:length(sub_categories[[ loc_nm3 ]]), function(t){unlist(items_factor[[ loc_nm3 ]][ RNG[[ loc_nm3 ]][[ sub_categories[[ loc_nm3 ]][ t ] ]] ])} )
 
-        for( t in as.integer(1:length(sub_categories[[ loc_nm3 ]])) ){
-            PreCalc__x__1[[t]] <- unique(.special1( tmp1, tmp2, t )) # how fast?
-        }
+#         for( t in as.integer(1:length(sub_categories[[ loc_nm3 ]])) ){
+#             PreCalc__x__1[[t]] <- unique(.special1( tmp1, tmp2, t )) # how fast?
+#         }
 	}
 	##
 	
@@ -180,7 +183,8 @@ runConCub <- function( obj, filter, nthreads=2, subset=NULL, verbose=list(output
 		term1 <- sub_categories[[ loc_nm1 ]][ g1 ]; if(verbose$show.cat1){cat(term1, sep="")}; notterm1 <- paste('not_', term1, sep="")
 
 		x1__ <- unique( unlist(items_factor[[ loc_nm1 ]][ RNG[[ loc_nm1 ]][[ term1 ]] ], use.names=FALSE) )
-		x2__ <- setdiffPresort( obj@population, x1__ ) # already sorted
+		#x2__ <- setdiffPresort( obj@population, x1__ ) # already sorted
+		x2__ <- setdiff( obj@population, x1__ ) # already sorted
 
 		RES_CAT2 <- list()
 		loc_nm2 <- nms_categories[2]
@@ -188,12 +192,16 @@ runConCub <- function( obj, filter, nthreads=2, subset=NULL, verbose=list(output
 			term2 <- sub_categories[[ loc_nm2 ]][ g2 ]; if(verbose$show.cat2){cat("\r\t", term2, "\t", sep="")}
 
 			x_1_ <- PreCalc__x_1_[[g2]]
-			x_2_ <- setdiffPresort(obj@population, PreCalc__x_1_[[g2]]) # already sorted; could be pre-calculted, but calculated again and again to avoid memory overflow
+			#x_2_ <- setdiffPresort(obj@population, PreCalc__x_1_[[g2]]) # already sorted; could be pre-calculted, but calculated again and again to avoid memory overflow
+			x_2_ <- setdiff(obj@population, PreCalc__x_1_[[g2]])
 
 			x1__Ix_1_ <- intersect( x1__, x_1_ );
-			x1__Ix_2_ <- intersectPresort( x_2_, x1__ );
-			x2__Ix_1_ <- intersectPresort( x2__, x_1_ );
-			x2__Ix_2_ <- setdiffPresort( obj@population, c( x1__Ix_1_, x1__Ix_2_, x2__Ix_1_ ) ) # already sorted
+# 			x1__Ix_2_ <- intersectPresort( x_2_, x1__ );
+# 			x2__Ix_1_ <- intersectPresort( x2__, x_1_ );
+# 			x2__Ix_2_ <- setdiffPresort( obj@population, c( x1__Ix_1_, x1__Ix_2_, x2__Ix_1_ ) ) # already sorted
+			x1__Ix_2_ <- intersect( x_2_, x1__ );
+			x2__Ix_1_ <- intersect( x2__, x_1_ );
+			x2__Ix_2_ <- setdiff( obj@population, c( x1__Ix_1_, x1__Ix_2_, x2__Ix_1_ ) ) # already sorted
             
 			RES_CAT3 <- list()
 			if(NCATS==2){
@@ -223,7 +231,8 @@ runConCub <- function( obj, filter, nthreads=2, subset=NULL, verbose=list(output
 					term3 <- sub_categories[[ loc_nm3 ]][ g3 ]; if(verbose$show.cat3){message(Len_term3[[ term3 ]])}
 
 					x__1 <- PreCalc__x__1[[g3]]
-					x__2 <- setdiffPresort(obj@population, PreCalc__x__1[[g3]]) 
+					#x__2 <- setdiffPresort(obj@population, PreCalc__x__1[[g3]]) 
+					x__2 <- setdiff(obj@population, PreCalc__x__1[[g3]]) 
 					subpop <- as.character(intersect( x1__Ix_1_, x__1 )); len_subpop <- length(subpop)
 					
 					CT <- array(NA, dim=c(2,2,2), dimnames=list( factor1=c( term1, notterm1 ), factor2=c( term2, paste('not_', term2, sep="") ), factor3=c( term3, paste('not_', term3, sep="") ) ))

@@ -124,9 +124,9 @@ sortAscii <- function(x){
     tmp <- Sys.getlocale("LC_COLLATE"); tmp2 <- Sys.setlocale("LC_COLLATE", "C"); x <- sort(x); tmp2 <- Sys.setlocale("LC_COLLATE", tmp);
 return(x)
 }
-intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
-setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
-.special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
+# intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
+# setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
+# .special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
 
 
 

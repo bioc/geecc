@@ -42,7 +42,8 @@ setMethod("initialize", signature="concub"
 	}else{
 		if(is.character(population)){
             population <- sortAscii(unique(population));
-			categories <- lapply( categories, function(x1){ lapply( x1, function( x ){ isct <- intersectPresort( population, x ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
+			#categories <- lapply( categories, function(x1){ lapply( x1, function( x ){ isct <- intersectPresort( population, x ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
+			categories <- lapply( categories, function(x1){ lapply( x1, function( x ){ isct <- intersect( population, x ); if(length(isct)==0){return(NULL)};return( isct ) } ) } )
 			for( i in 1:num_categories ){
 				ii <- nms_categories[i]
 				# if declared and FALSE, then remove
