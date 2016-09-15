@@ -258,21 +258,3 @@ return(y)
 }
 
 
-
-.pval2star <- function(x){
-	y <- matrix("", nrow=nrow(x), ncol=ncol(x), dimnames=dimnames(x))
-	Thr <- c(0.0001, 0.001, 0.01, 0.05, 0.1)
-	Sym <- c('****', '***', '**', '*', '.')
-
-	alreadyFound <- c()
-	for(i in 1:5){
-		pos <- which( x <= Thr[i] )
-		if(length(pos)>0){
-			pos0 <- setdiff(pos, alreadyFound)
-			if(length(pos0)>0){y[pos0] <- Sym[i]}
-			alreadyFound <- c(alreadyFound, pos0)
-		}
-	}
-return(y)
-}
-

@@ -576,7 +576,7 @@ plotConCub <- function(obj, filter, fix.cat=1, show=list(), dontshow=list(), arg
 
 		if(t==TRUE){ ODDSRATIO_1 <- t(ODDSRATIO_1); PVAL_1 <- t(PVAL_1) }
 
-		PVALSTAR <- .pval2star(PVAL_1)
+		PVALSTAR <- pval2star(PVAL_1)
 		ODDSRATIO_2 <- log2(ODDSRATIO_1); ODDSRATIO_2[which( is.nan(ODDSRATIO_2) | ODDSRATIO_2 == -Inf | ODDSRATIO_2 == Inf | is.na(ODDSRATIO_2) )] <- 0
 
 		if( test.direction(filter) %in% c('over', "greater") ){ PVALSTAR[ ODDSRATIO_2 < 0 ] <- "" }
