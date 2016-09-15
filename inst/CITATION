@@ -1,0 +1,8 @@
+year <- sub("-.*", "", meta$Date)
+note <- sprintf("R/BioConductor package version %s", meta$Version)
+bibentry(bibtype = "Manual",
+         title = "{geecc}: Gene Set Enrichment Analysis Extended to Contingency Cubes",
+         author = c(person("Markus", "Boenn")),
+         year = year,
+         note = note,
+         url = "https://www.bioconductor.org/packages/release/bioc/html/geecc.html")
