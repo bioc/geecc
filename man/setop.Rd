@@ -1,6 +1,6 @@
 \name{sortAscii}
 \alias{sortAscii}
-%\alias{intersectPresort}
+\alias{intersectPresort}
 %\alias{setdiffPresort}
 
 \title{
@@ -11,14 +11,14 @@ Sort and use pre-sorted character vectors in set-operations
 }
 \usage{
 sortAscii(x)
-%intersectPresort(pop, x)
+intersectPresort(pop, x)
 %setdiffPresort(pop, x)
 }
 \arguments{
   \item{x}{
 	an unsorted vectors of strings
   }
- % \item{pop}{a sorted vector of strings }
+  \item{pop}{a sorted vector of strings }
 }
 
 \details{
@@ -37,5 +37,5 @@ AA <- matrix( sample( c(LETTERS, letters), 10*30000, rep=TRUE ), ncol=10 )
 A <- unique(apply(AA, 1, paste, collapse=""))
 B <- sample(AA, 100, replace=FALSE); B <- c(B, "1234")
 
-%res <- intersectPresort( sortAscii(A), B )
+res <- intersectPresort( sortAscii(A), B )
 }

@@ -22,7 +22,7 @@ GO2list <- function(dbase, go.cat=NULL, rm=NULL, keep=NULL){
 
 	if(!is.null(go.cat)){ #remove GO categories
 		if(!requireNamespace("GO.db")){ warning(paste0("Library ", sQuote("GO.db"), " cannot be loaded. Returning empty list.")); return(list()) }
-		my_keep <- vapply(names(loadedList), function( l ){ ifelse( ( Ontology( l ) %in% go.cat ), TRUE, FALSE) }, FUN.VALUE=TRUE )
+		my_keep <- vapply(names(loadedList), function( l ){ ifelse( ( AnnotationDbi::Ontology( l ) %in% go.cat ), TRUE, FALSE) }, FUN.VALUE=TRUE )
 		loadedList <- loadedList[ my_keep ]
 	}
 	if(!is.null(rm)){ #remove GO terms
@@ -51,7 +51,6 @@ return(loadedList)
 
 get_gochildren <- function(nms){
 	CAT <- c("BP", "CC", "MF")
-
 }
 
 
@@ -62,9 +61,9 @@ GO2offspring <- function(x){
 	
 	R <- 1:length(x)
 	nms <- names(x)
-	bp <- AnnotationDbi::as.list(GOBPOFFSPRING)[ nms ]
- 	cc <- AnnotationDbi::as.list(GOCCOFFSPRING)[ nms ]
- 	mf <- AnnotationDbi::as.list(GOMFOFFSPRING)[ nms ]
+	bp <- AnnotationDbi::as.list(GO.db::GOBPOFFSPRING)[ nms ]
+ 	cc <- AnnotationDbi::as.list(GO.db::GOCCOFFSPRING)[ nms ]
+ 	mf <- AnnotationDbi::as.list(GO.db::GOMFOFFSPRING)[ nms ]
 	res <- c( bp, cc, mf )
 	off <- res[ !sapply(res, is.null) ]
 	
@@ -82,7 +81,7 @@ GO2level <- function(x, go.level=-1, relation=c("is_a")){
 	if(!requireNamespace("AnnotationDbi")){ warning(paste0("Library ", sQuote("AnnotationDbi"), " cannot be loaded. Returning input list unmodified.")); return(x) }
 
 	
-	u <- unlist(Term(GOTERM))
+	u <- unlist(AnnotationDbi::Term(GO.db::GOTERM))
 	u2 <- u[grep("biological_process|molecular_function|cellular_component", u)]
 	goid_gene_ontology <- "GO:0003673"
 	roots_id2term <- u2
@@ -124,7 +123,7 @@ sortAscii <- function(x){
     tmp <- Sys.getlocale("LC_COLLATE"); tmp2 <- Sys.setlocale("LC_COLLATE", "C"); x <- sort(x); tmp2 <- Sys.setlocale("LC_COLLATE", tmp);
 return(x)
 }
-# intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
+intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
 # setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
 # .special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
 

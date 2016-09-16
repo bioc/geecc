@@ -6,3 +6,4 @@ geecc
 ", ver, "loaded
 "))
 		}
+.onUnload <- function(libpath){ library.dynam.unload("geecc", libpath) }
