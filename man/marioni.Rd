@@ -9,6 +9,8 @@
 \references{
  Marioni, J. C. et al. (2008) RNA-seq: an assessment of technical reproducibility and comparison with gene expression arrays. Genome research
 }
+\value{A \code{data.frame}.}
+
 \examples{
 data(marioni)
 head(marioni[, 1:5])

@@ -124,8 +124,8 @@ sortAscii <- function(x){
 return(x)
 }
 intersectPresort <- function(pop, x){ cf_intersect6(pop, x) }
-# setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
-# .special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
+setdiffPresort <- function(pop, x){ cf_setdiff1(pop, x) }
+.special1 <- function( x,y ,t ){ cf_special1( x,y ,t ) }
 
 
 

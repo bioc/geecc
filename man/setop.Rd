@@ -1,7 +1,7 @@
 \name{sortAscii}
 \alias{sortAscii}
 \alias{intersectPresort}
-%\alias{setdiffPresort}
+\alias{setdiffPresort}
 
 \title{
 Optimized operations of sets of character-vectors
@@ -12,7 +12,7 @@ Sort and use pre-sorted character vectors in set-operations
 \usage{
 sortAscii(x)
 intersectPresort(pop, x)
-%setdiffPresort(pop, x)
+setdiffPresort(pop, x)
 }
 \arguments{
   \item{x}{

@@ -1,7 +1,7 @@
 \name{NEWS}
 \title{News for Package 'geecc'}
 
-\section{Changes in geecc version 1.1.11 (2016-08-xx)}{
+\section{Changes in geecc version 1.7.7 (2016-09-19)}{
   \itemize{
         \item major revision of \code{init} and \code{runConCub} resulting in significant reduction of memory allocation and runtime
     \item speed-up of set-operations
