@@ -1,9 +1,7 @@
-.onAttach <- function(lib,pkg){
-		ver <- read.dcf(file.path(lib, pkg, "DESCRIPTION"), "Version")
-		ver <- as.character(ver)
-		packageStartupMessage(paste("
-geecc
-", ver, "loaded
-"))
-		}
+.onAttach <- function(libname, pkgname) {
+    msg <- sprintf(
+        "Package '%s' is deprecated and will be removed from Bioconductor
+         version %s", pkgname, "3.12")
+    .Deprecated(msg=paste(strwrap(msg, exdent=2), collapse="\n"))
+}
 .onUnload <- function(libpath){ library.dynam.unload("geecc", libpath) }
